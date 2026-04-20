@@ -20,9 +20,9 @@
     }
 
     toastEl.textContent = message;
-    toastEl.style.background = isError ? '#4a161c' : '#111827';
-    toastEl.style.border = isError ? '1px solid #9f3040' : '1px solid #2a3550';
-    toastEl.style.color = '#f5f7fb';
+    toastEl.style.background = isError ? '#4b2720' : '#2b311f';
+    toastEl.style.border = isError ? '1px solid #a56f58' : '1px solid #5d6c46';
+    toastEl.style.color = '#f2ead7';
     toastEl.style.opacity = '1';
 
     clearTimeout(showToast._timer);

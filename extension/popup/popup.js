@@ -241,7 +241,7 @@ $('open-output').addEventListener('click', async () => {
   await sendMessage({
     type: 'OPEN_OUTPUT_TAB',
     text: $('output').textContent || '',
-    label: 'Hermes Relay output',
+    label: 'Hermes Relay for Chrome',
   });
 });
 

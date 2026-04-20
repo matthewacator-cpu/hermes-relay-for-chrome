@@ -29,6 +29,26 @@
 
       <section class="panel">
         <div class="section-head">
+          <div class="section-title">Direct Line</div>
+          <div class="toolbar-actions">
+            <button id="refresh-direct" class="secondary-btn">Refresh</button>
+            <button id="clear-direct" class="secondary-btn">Clear</button>
+          </div>
+        </div>
+        <div id="direct-thread" class="direct-thread">
+          <div class="history-empty">Ask Hermes about this page or use the right-click menu.</div>
+        </div>
+        <textarea id="direct-prompt" rows="4" placeholder="Ask Hermes what this page means, what changed, what to do next, or what to remember."></textarea>
+        <div class="toolbar">
+          <div class="direct-hint">Current page and any selected text are sent with your message.</div>
+          <div class="toolbar-actions">
+            <button id="send-direct" class="primary-btn">Send To Hermes</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
           <div class="section-title">Page Notes</div>
           <button id="save-note" class="secondary-btn">Save Note</button>
         </div>

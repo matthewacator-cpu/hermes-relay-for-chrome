@@ -9,6 +9,7 @@ let currentNote = '';
 let trackedItems = [];
 let trackedSearch = '';
 let trackedPinnedOnly = false;
+let currentDirectThread = null;
 
 function relativeTime(iso) {
   const delta = Date.now() - new Date(iso).getTime();
@@ -27,6 +28,27 @@ async function sendMessage(message) {
 function setOutput(text) {
   currentOutput = text || '';
   $('workspace-output').textContent = currentOutput || 'Hermes output will appear here.';
+}
+
+function renderDirectThread(thread) {
+  currentDirectThread = thread || null;
+  const root = $('direct-thread');
+  const messages = Array.isArray(thread?.messages) ? thread.messages : [];
+  if (!messages.length) {
+    root.innerHTML = '<div class="history-empty">Ask Hermes about this page or use the right-click menu.</div>';
+    return;
+  }
+
+  root.innerHTML = messages.map((message) => `
+    <article class="direct-message ${message.role === 'user' ? 'user' : 'assistant'}">
+      <div class="direct-meta">
+        <span>${message.role === 'user' ? 'You' : 'Hermes'}</span>
+        <span>${relativeTime(message.timestamp)}</span>
+      </div>
+      <div class="direct-text">${escapeHtml(message.text || '')}</div>
+    </article>
+  `).join('');
+  root.scrollTop = root.scrollHeight;
 }
 
 function renderPage(page, tab, note) {
@@ -168,6 +190,19 @@ async function refreshPage() {
   }
   renderPage(response.page, response.tab, response.note);
   await refreshSnapshots();
+  await refreshDirectThread();
+}
+
+async function refreshDirectThread() {
+  const response = await sendMessage({
+    type: 'GET_DIRECT_THREAD',
+    page: currentPage,
+  });
+  if (!response.ok) {
+    setOutput(response.error || 'Could not load the Hermes direct line.');
+    return;
+  }
+  renderDirectThread(response.thread);
 }
 
 function setMode(mode) {
@@ -210,6 +245,41 @@ async function runCurrentWorkflow(injectAfter) {
 }
 
 $('refresh-page').addEventListener('click', refreshPage);
+$('refresh-direct').addEventListener('click', refreshDirectThread);
+
+$('send-direct').addEventListener('click', async () => {
+  if (!currentPage) {
+    await refreshPage();
+  }
+
+  const response = await sendMessage({
+    type: 'DIRECT_LINE_MESSAGE',
+    prompt: $('direct-prompt').value.trim(),
+    page: currentPage,
+    source: 'workspace',
+  });
+  if (!response.ok) {
+    setOutput(response.error || 'Could not send your message to Hermes.');
+    return;
+  }
+
+  $('direct-prompt').value = '';
+  renderDirectThread(response.thread);
+  setOutput(response.text || '');
+  await refreshHistory();
+});
+
+$('clear-direct').addEventListener('click', async () => {
+  const response = await sendMessage({
+    type: 'CLEAR_DIRECT_THREAD',
+    page: currentPage,
+  });
+  if (!response.ok) {
+    setOutput(response.error || 'Could not clear the Hermes thread.');
+    return;
+  }
+  renderDirectThread(response.thread);
+});
 
 $('track-page').addEventListener('click', async () => {
   const response = await sendMessage({

@@ -3,8 +3,8 @@
   "name": "Hermes Relay for Chrome",
   "short_name": "Hermes Relay",
   "version": "0.1.0",
-  "description": "Browser-native capture, memory, and AI context handoff for Hermes Agent.",
-  "homepage_url": "https://github.com/matthewacator-cpu/hermes-relay",
+  "description": "Hermes Relay for Chrome gives Hermes Agent a direct line into the browser for page context, capture, watchlists, and AI handoff.",
+  "homepage_url": "https://github.com/matthewacator-cpu/hermes-relay-for-chrome",
   "minimum_chrome_version": "114",
   "permissions": [
     "storage",

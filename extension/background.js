@@ -15,6 +15,15 @@ const CONTEXT_MENU_IDS = {
   injectContext: 'hermes-relay-inject-context',
 };
 
+async function getDirectThreads() {
+  const data = await chrome.storage.local.get({ directThreads: {} });
+  return data.directThreads;
+}
+
+async function saveDirectThreads(threads) {
+  await chrome.storage.local.set({ directThreads: threads });
+}
+
 async function getConfig() {
   const data = await chrome.storage.local.get(DEFAULT_CONFIG);
   return {
@@ -41,6 +50,15 @@ function authHeaders(config, extra = {}) {
 
 function normalizeBaseUrl(baseUrl) {
   return (baseUrl || DEFAULT_CONFIG.baseUrl).replace(/\/+$/, '');
+}
+
+function hashString(input) {
+  let hash = 0;
+  const text = String(input || '');
+  for (let index = 0; index < text.length; index += 1) {
+    hash = (hash * 31 + text.charCodeAt(index)) >>> 0;
+  }
+  return hash.toString(36);
 }
 
 async function checkHealth() {
@@ -378,6 +396,17 @@ function buildConversationId(config, suffix) {
   return `${config.conversationPrefix}-${safeSuffix}`;
 }
 
+function buildDirectThreadMeta(config, page, tab) {
+  const seed = page?.url || tab?.url || `tab-${tab?.id || 'current'}`;
+  const suffix = `direct-${hashString(seed)}`;
+  return {
+    threadKey: suffix,
+    conversation: buildConversationId(config, suffix),
+    title: page?.title || tab?.title || 'Current page',
+    url: page?.url || tab?.url || '',
+  };
+}
+
 function inferAssistantTarget(url) {
   const raw = String(url || '').toLowerCase();
   if (raw.includes('claude.ai')) return 'claude';
@@ -521,6 +550,157 @@ async function callHermesResponse({ prompt, instructions, conversation }) {
   return {
     raw: payload,
     text: extractOutputText(payload),
+  };
+}
+
+function composeDirectPrompt(page, userPrompt) {
+  return [
+    `Current page title: ${page?.title || '(untitled)'}`,
+    `Current page URL: ${page?.url || ''}`,
+    `Hostname: ${page?.hostname || ''}`,
+    `Page type: ${page?.pageType || 'page'}`,
+    page?.description ? `Page description:\n${page.description}` : '',
+    Array.isArray(page?.headings) && page.headings.length
+      ? `Visible headings:\n- ${page.headings.join('\n- ')}`
+      : '',
+    page?.selection ? `Selected text:\n${page.selection}` : '',
+    `Page text excerpt:\n${page?.text || '(no readable text found)'}`,
+    `User message:\n${userPrompt}`,
+  ].filter(Boolean).join('\n\n');
+}
+
+async function getDirectThread(page = null, tab = null) {
+  let activeTab = tab;
+  let activePage = page;
+
+  if (!activeTab) {
+    activeTab = await getActiveTab();
+  }
+  if (!activePage && activeTab?.id) {
+    activePage = await extractPageContext(activeTab.id);
+  }
+  if (!activeTab && !activePage) {
+    throw new Error('No active tab available.');
+  }
+
+  const config = await getConfig();
+  const meta = buildDirectThreadMeta(config, activePage, activeTab);
+  const threads = await getDirectThreads();
+  return {
+    threadKey: meta.threadKey,
+    thread: threads[meta.threadKey] || {
+      ...meta,
+      messages: [],
+      updatedAt: '',
+    },
+    page: activePage,
+    tab: activeTab,
+  };
+}
+
+async function saveDirectThread(threadKey, thread) {
+  const threads = await getDirectThreads();
+  threads[threadKey] = thread;
+  await saveDirectThreads(threads);
+  return thread;
+}
+
+async function clearDirectThread(page = null, tab = null) {
+  const { threadKey, thread } = await getDirectThread(page, tab);
+  const threads = await getDirectThreads();
+  threads[threadKey] = {
+    ...thread,
+    messages: [],
+    updatedAt: new Date().toISOString(),
+  };
+  await saveDirectThreads(threads);
+  return threads[threadKey];
+}
+
+async function sendDirectLineMessage({
+  prompt = '',
+  page = null,
+  tab = null,
+  selectionText = '',
+  source = 'workspace',
+}) {
+  let activeTab = tab;
+  let activePage = page;
+  if (!activeTab) {
+    activeTab = await getActiveTab();
+  }
+  if (!activePage && activeTab?.id) {
+    activePage = await extractPageContext(activeTab.id);
+  }
+  if (!activePage) {
+    throw new Error('No active page available.');
+  }
+
+  if (selectionText) {
+    activePage = {
+      ...activePage,
+      selection: selectionText,
+    };
+  }
+
+  const config = await getConfig();
+  const meta = buildDirectThreadMeta(config, activePage, activeTab);
+  const promptText = prompt.trim() || 'Take in this page and tell me what matters.';
+  const result = await callHermesResponse({
+    prompt: composeDirectPrompt(activePage, promptText),
+    instructions: 'You are Hermes receiving live browser context from Hermes Relay. Treat the browser as your eyes and ears. Answer directly, ground yourself in the supplied page, and stay useful.',
+    conversation: meta.conversation,
+  });
+
+  const existing = await getDirectThreads();
+  const prior = existing[meta.threadKey] || {
+    ...meta,
+    messages: [],
+    updatedAt: '',
+  };
+  const timestamp = new Date().toISOString();
+  const nextThread = {
+    ...prior,
+    ...meta,
+    updatedAt: timestamp,
+    messages: [
+      ...prior.messages,
+      {
+        id: crypto.randomUUID(),
+        role: 'user',
+        text: promptText,
+        timestamp,
+        source,
+        selection: selectionText || activePage.selection || '',
+      },
+      {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        text: result.text,
+        timestamp: new Date().toISOString(),
+        source,
+      },
+    ].slice(-24),
+  };
+
+  await saveDirectThread(meta.threadKey, nextThread);
+  await pushRecent({
+    type: 'direct-line',
+    title: activePage.title || activeTab?.title || 'Current page',
+    url: activePage.url || activeTab?.url || '',
+    prompt: promptText,
+    summary: result.text.slice(0, 280),
+    output: result.text,
+    source,
+  });
+
+  return {
+    ok: true,
+    thread: nextThread,
+    threadKey: meta.threadKey,
+    page: activePage,
+    text: result.text,
+    raw: result.raw,
   };
 }
 
@@ -845,10 +1025,10 @@ async function openContextResult(text, label) {
         <meta charset="utf-8">
         <title>${label}</title>
         <style>
-          body { margin: 0; padding: 24px; background: #0b0c12; color: #e7e8ee; font: 14px/1.6 -apple-system, BlinkMacSystemFont, sans-serif; }
+          body { margin: 0; padding: 24px; background: #202316; color: #f2ead7; font: 14px/1.6 -apple-system, BlinkMacSystemFont, sans-serif; }
           main { max-width: 860px; margin: 0 auto; }
           h1 { margin: 0 0 16px; font-size: 18px; }
-          pre { white-space: pre-wrap; word-break: break-word; background: #141722; border: 1px solid #252c40; padding: 18px; border-radius: 12px; }
+          pre { white-space: pre-wrap; word-break: break-word; background: #2a311f; border: 1px solid #586546; padding: 18px; border-radius: 12px; }
         </style>
       </head>
       <body>
@@ -906,18 +1086,32 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   try {
     if (info.menuItemId === CONTEXT_MENU_IDS.askSelection && info.selectionText) {
-      const text = await askHermesAboutSelection(info.selectionText.trim(), tab);
-      await openContextResult(text, 'Hermes on this selection');
+      await sendDirectLineMessage({
+        tab,
+        selectionText: info.selectionText.trim(),
+        prompt: 'Focus on this selection and tell me what matters.',
+        source: 'context-selection',
+      });
+      await openSidePanel();
     }
 
     if (info.menuItemId === CONTEXT_MENU_IDS.rememberSelection && info.selectionText) {
-      const text = await rememberSelection(info.selectionText.trim(), tab);
-      await openContextResult(text, 'Hermes memory result');
+      await sendDirectLineMessage({
+        tab,
+        selectionText: info.selectionText.trim(),
+        prompt: 'Look at this selection, decide what should be remembered, and tell me what to do next.',
+        source: 'context-remember',
+      });
+      await openSidePanel();
     }
 
     if (info.menuItemId === CONTEXT_MENU_IDS.sendPage) {
-      const result = await capturePageToHermes();
-      await openContextResult(result.text, 'Hermes page capture');
+      await sendDirectLineMessage({
+        tab,
+        prompt: 'Take in this whole page and tell me what matters and what I should do next.',
+        source: 'context-page',
+      });
+      await openSidePanel();
     }
 
     if (info.menuItemId === CONTEXT_MENU_IDS.injectContext) {
@@ -980,6 +1174,29 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       const url = message.url;
       const snapshots = url ? await getSnapshotsForUrl(url) : await getSnapshots();
       sendResponse({ ok: true, snapshots });
+      return;
+    }
+
+    if (message.type === 'GET_DIRECT_THREAD') {
+      const result = await getDirectThread(message.page || null, null);
+      sendResponse({ ok: true, ...result });
+      return;
+    }
+
+    if (message.type === 'DIRECT_LINE_MESSAGE') {
+      const result = await sendDirectLineMessage({
+        prompt: message.prompt || '',
+        page: message.page || null,
+        selectionText: message.selectionText || '',
+        source: message.source || 'workspace',
+      });
+      sendResponse(result);
+      return;
+    }
+
+    if (message.type === 'CLEAR_DIRECT_THREAD') {
+      const thread = await clearDirectThread(message.page || null, null);
+      sendResponse({ ok: true, thread });
       return;
     }
 
@@ -1113,7 +1330,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     if (message.type === 'OPEN_OUTPUT_TAB') {
-      await openContextResult(message.text || '', message.label || 'Hermes Relay output');
+      await openContextResult(message.text || '', message.label || 'Hermes Relay for Chrome');
       sendResponse({ ok: true });
       return;
     }

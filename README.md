@@ -1,10 +1,10 @@
-# Hermes Relay
+# Hermes Relay for Chrome
 
 <p align="center">
   <img src="./assets/readme-hero.svg" alt="Hermes Relay hero banner" width="100%" />
 </p>
 
-> A standalone Chrome extension for [Hermes Agent](https://hermes-agent.nousresearch.com/) that gives Hermes a browser-native control layer for capture, memory, watchlists, and AI context handoff.
+> A standalone Chrome extension for [Hermes Agent](https://hermes-agent.nousresearch.com/) that gives Hermes a direct browser surface for page context, capture, memory, watchlists, and AI handoff.
 
 Hermes Relay turns the browser into a working surface for Hermes.
 It lets you understand the page you are on, save durable context, track pages over time, and hand off clean context bundles into other assistants like Claude, ChatGPT, and Gemini.
@@ -108,7 +108,7 @@ Before using Hermes Relay, make sure you have:
 
 ## Hermes setup
 
-Hermes Relay expects the official Hermes API server to be running locally.
+Hermes Relay for Chrome expects the official Hermes API server to be running locally.
 
 Add the following to `~/.hermes/.env`:
 

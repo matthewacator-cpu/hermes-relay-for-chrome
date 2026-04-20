@@ -116,24 +116,24 @@ function renderMasterIcon() {
     for (let x = 0; x < size; x += 1) {
       const offset = (y * size + x) * 4;
 
-      let r = 10;
-      let g = 16;
-      let b = 26;
+      let r = 32;
+      let g = 35;
+      let b = 22;
       let a = 255;
 
       if (roundedRectContains(x, y, outer.left, outer.top, outer.width, outer.height, outer.radius)) {
         const gradient = (y - outer.top) / outer.height;
-        r = Math.round(lerp(21, 13, gradient));
-        g = Math.round(lerp(33, 19, gradient));
-        b = Math.round(lerp(58, 32, gradient));
+        r = Math.round(lerp(68, 42, gradient));
+        g = Math.round(lerp(81, 49, gradient));
+        b = Math.round(lerp(51, 31, gradient));
       }
 
       const borderBand = roundedRectContains(x, y, outer.left, outer.top, outer.width, outer.height, outer.radius)
         && !roundedRectContains(x, y, inner.left, inner.top, inner.width, inner.height, inner.radius);
       if (borderBand) {
-        r = 45;
-        g = 64;
-        b = 93;
+        r = 88;
+        g = 101;
+        b = 70;
       }
 
       let glow = 0;
@@ -144,31 +144,31 @@ function renderMasterIcon() {
         }
       }
       if (glow > 0) {
-        r = Math.round(lerp(r, 122, glow));
-        g = Math.round(lerp(g, 215, glow));
-        b = Math.round(lerp(b, 255, glow));
+        r = Math.round(lerp(r, 165, glow));
+        g = Math.round(lerp(g, 186, glow));
+        b = Math.round(lerp(b, 116, glow));
       }
 
       const vertical = Math.abs(x - 256) <= 14 && y >= 148 && y <= 364;
       if (vertical) {
-        r = 234;
-        g = 246;
-        b = 255;
+        r = 242;
+        g = 234;
+        b = 215;
       }
 
       const topBar = Math.abs(y - 210) <= 14 && x >= 166 && x <= 346;
       const bottomBar = Math.abs(y - 292) <= 14 && x >= 186 && x <= 326;
       if (topBar || bottomBar) {
-        r = 122;
-        g = 215;
-        b = 255;
+        r = 242;
+        g = 234;
+        b = 215;
       }
 
       const ring = Math.abs(Math.hypot(x - 256, y - 256) - 188) <= 2;
       if (ring) {
-        r = Math.max(r, 82);
-        g = Math.max(g, 181);
-        b = Math.max(b, 255);
+        r = Math.max(r, 161);
+        g = Math.max(g, 179);
+        b = Math.max(b, 113);
       }
 
       pixels[offset] = r;
