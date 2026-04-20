@@ -4,36 +4,36 @@
   <img src="./assets/readme-hero.svg" alt="Hermes Relay hero banner" width="100%" />
 </p>
 
-> A standalone Chrome extension for [Hermes Agent](https://hermes-agent.nousresearch.com/) that gives Hermes a direct browser surface for page context, capture, memory, watchlists, and AI handoff.
+> The browser extension for [Hermes Agent](https://hermes-agent.nousresearch.com/) by Nous Research. Hermes Relay gives Hermes a direct line into the browser for page context, revisit continuity, tracked pages, and AI handoff.
 
-Hermes Relay turns the browser into a working surface for Hermes.
-It lets you understand the page you are on, save durable context, track pages over time, and hand off clean context bundles into other assistants like Claude, ChatGPT, and Gemini.
+Hermes Relay turns the browser into a working surface for Hermes Agent.
+It lets Hermes understand the page you are on, remember what mattered there, return with continuity later, and hand off clean context bundles into assistants like Claude, ChatGPT, and Gemini.
 
 ---
 
 ## Why Hermes Relay
 
-Hermes is great at reasoning, memory, and workflow support.
-Hermes Relay gives it a practical browser UI so you can:
+[Hermes Agent](https://hermes-agent.nousresearch.com/) is built to live on your machine, remember what it learns, and grow more capable over time.
+Hermes Relay is the browser companion for that agent, so you can:
 
-- ask Hermes about the page you are currently reading
-- summarize, extract tasks, draft replies, and plan next steps
+- ask Hermes about the page you are reading right now
+- keep continuity on important pages with notes, pins, tracked pages, and snapshots
+- revisit a page and understand what changed since the last time Hermes saw it
 - save durable facts, preferences, and workflows into Hermes memory
-- track important pages with notes, pins, and snapshots
-- compare the current page with a previous snapshot
+- turn page context into summaries, action plans, replies, and task lists
 - build compact context bundles for other AI assistants
 - inject those bundles directly into supported chat inputs
 
 ---
 
-## What It Feels Like
+## Product Shape
 
 ```mermaid
 flowchart LR
-  A[Open any page] --> B[Capture page context]
+  A[Open any page] --> B[Hermes sees page context]
   B --> C[Run Hermes workflow]
-  C --> D[Save memory, notes, snapshots, or watchlist state]
-  C --> E[Build assistant-ready context bundle]
+  C --> D[Save memory, notes, snapshots, or tracked-page state]
+  D --> E[Revisit with continuity]
   E --> F[Inject into Claude, ChatGPT, or Gemini]
 ```
 
@@ -60,7 +60,7 @@ The side panel is the primary workspace for ongoing page work:
 - page notes
 - page snapshots and snapshot comparison
 - direct line thread for page-aware conversation
-- workflow runner
+- workflow runner for page-aware Hermes actions
 - memory actions
 - tracked-page review with search and pinning
 - workspace history
@@ -102,7 +102,7 @@ Hermes Relay also hooks into the browser directly:
 Before using Hermes Relay, make sure you have:
 
 - Chrome **114+**
-- a local Hermes installation
+- a local Hermes Agent installation
 - the Hermes API server enabled
 - a local Hermes API key
 
@@ -110,7 +110,7 @@ Before using Hermes Relay, make sure you have:
 
 ## Hermes setup
 
-Hermes Relay for Chrome expects the official Hermes API server to be running locally.
+Hermes Relay for Chrome expects the official Hermes Agent API server to be running locally.
 
 Add the following to `~/.hermes/.env`:
 
@@ -133,6 +133,7 @@ http://127.0.0.1:8642
 
 Official references:
 
+- [Hermes Agent](https://hermes-agent.nousresearch.com/)
 - [Hermes Agent docs](https://hermes-agent.nousresearch.com/docs/)
 - [API Server docs](https://hermes-agent.nousresearch.com/docs/user-guide/features/api-server/)
 - [Memory docs](https://hermes-agent.nousresearch.com/docs/user-guide/features/memory/)
@@ -161,9 +162,9 @@ A good first run looks like this:
 
 1. Open any article, app page, or thread
 2. Click **Summarize** or **Ask**
-3. Try **Capture Page** to save a retrieval artifact
-4. Open the **Workspace** side panel for notes, snapshots, and memory actions
-5. Use **Build Context** or **Inject Into Chat** to continue work in another assistant
+3. Save a note or snapshot if the page matters later
+4. Open the **Workspace** side panel for continuity, notes, snapshots, and memory actions
+5. Use **Build Context** or **Inject Context** to continue work in another assistant
 
 ---
 
@@ -179,7 +180,7 @@ A good first run looks like this:
 
 ## Context menus
 
-Hermes Relay adds browser context-menu actions for quick, in-page use. Selection and page actions now route into the Hermes Workspace side panel by default so your browsing flow stays intact:
+Hermes Relay adds browser context-menu actions for quick, in-page use. Selection and page actions route into the Hermes Workspace side panel by default so your browsing flow stays intact:
 
 - **Explain this selection with Hermes**
 - **Save this selection to Hermes memory**
@@ -218,6 +219,13 @@ This will:
 
 - generate release icons in `extension/icons/`
 - create `dist/hermes-relay-chrome.zip`
+
+---
+
+## Positioning
+
+Hermes Relay for Chrome is the browser extension for Hermes Agent by Nous Research.
+It gives Hermes a direct line into the pages you read, revisit, track, and hand off into AI workflows.
 
 ---
 

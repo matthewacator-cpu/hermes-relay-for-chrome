@@ -8,8 +8,8 @@
       <stop offset="1" stop-color="#04080A"/>
     </linearGradient>
     <radialGradient id="glowLeft" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(246 112) rotate(40) scale(420 320)">
-      <stop stop-color="#1F564D" stop-opacity="0.32"/>
-      <stop offset="1" stop-color="#1F564D" stop-opacity="0"/>
+      <stop stop-color="#5D7047" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#5D7047" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="glowRight" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1062 492) rotate(180) scale(340 230)">
       <stop stop-color="#B19872" stop-opacity="0.14"/>
@@ -29,7 +29,7 @@
   <rect width="1280" height="640" rx="28" fill="url(#glowRight)"/>
 
   <g filter="url(#softBlur)" opacity="0.16">
-    <ellipse cx="890" cy="330" rx="240" ry="230" fill="#25433C"/>
+    <ellipse cx="890" cy="330" rx="240" ry="230" fill="#374333"/>
     <ellipse cx="380" cy="540" rx="170" ry="120" fill="#8C7758"/>
   </g>
 
@@ -50,7 +50,7 @@
     <text x="50" y="118" fill="#E9D8C2" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="24" font-weight="700" letter-spacing="0.08em">RELAY</text>
   </g>
 
-  <text x="244" y="79" fill="#A79C83" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="10" font-weight="600" letter-spacing="0.28em">BROWSER WORKSPACE FOR HERMES AGENT</text>
+  <text x="244" y="79" fill="#A79C83" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="10" font-weight="600" letter-spacing="0.28em">BROWSER COMPANION FOR HERMES AGENT</text>
   <text x="1204" y="74" text-anchor="end" fill="#A79C83" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="10" font-weight="600" letter-spacing="0.26em">README HERO</text>
 
   <rect x="1084" y="58" width="64" height="26" rx="13" fill="#111A18" stroke="#7A715C" stroke-opacity="0.68"/>
@@ -60,27 +60,27 @@
 
   <rect x="70" y="168" width="1140" height="328" fill="url(#panel)" stroke="#28413C" stroke-opacity="0.82"/>
 
-  <text x="86" y="248" fill="#F2E8D9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="72" font-weight="800" letter-spacing="-0.04em">A browser workspace</text>
-  <text x="86" y="320" fill="#F2E8D9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="72" font-weight="800" letter-spacing="-0.04em">for Hermes</text>
+  <text x="86" y="248" fill="#F2E8D9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="72" font-weight="800" letter-spacing="-0.04em">Browser companion</text>
+  <text x="86" y="320" fill="#F2E8D9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="72" font-weight="800" letter-spacing="-0.04em">for Hermes Agent</text>
 
   <text x="86" y="386" fill="#C2B7A4" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="26" font-weight="500">Capture pages, save durable memory, track important work,</text>
   <text x="86" y="424" fill="#C2B7A4" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="26" font-weight="500">and hand off clean context into Claude, ChatGPT, and Gemini.</text>
 
   <text x="86" y="566" fill="#E9D8C2" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="0.22em">CAPTURE</text>
-  <text x="222" y="566" fill="#8FA196" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="0.22em">MEMORY</text>
-  <text x="352" y="566" fill="#8FA196" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="0.22em">WATCHLISTS</text>
-  <text x="546" y="566" fill="#8FA196" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="0.22em">CONTEXT HANDOFF</text>
+  <text x="222" y="566" fill="#A5BA74" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="0.22em">MEMORY</text>
+  <text x="352" y="566" fill="#A5BA74" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="0.22em">TRACKED PAGES</text>
+  <text x="598" y="566" fill="#A5BA74" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="0.22em">CONTEXT HANDOFF</text>
 
   <g>
     <rect x="842" y="188" width="172" height="24" rx="12" fill="#0A1413" stroke="#27433D"/>
     <text x="858" y="205" fill="#A79C83" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="0.24em">MEMORY RECEIPT</text>
     <rect x="842" y="220" width="286" height="134" rx="22" fill="#091110" stroke="#28413C"/>
-    <rect x="870" y="250" width="96" height="14" rx="7" fill="#8FC9BD"/>
+    <rect x="870" y="250" width="96" height="14" rx="7" fill="#A5BA74"/>
     <rect x="870" y="278" width="154" height="11" rx="5.5" fill="#455348"/>
     <rect x="870" y="301" width="126" height="11" rx="5.5" fill="#39473E"/>
     <rect x="870" y="324" width="176" height="11" rx="5.5" fill="#2D3C35"/>
-    <circle cx="1082" cy="262" r="18" fill="#10201C" stroke="#4D7E72"/>
-    <path d="M1074 262L1080 268L1091 255" stroke="#8FC9BD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="1082" cy="262" r="18" fill="#10201C" stroke="#738550"/>
+    <path d="M1074 262L1080 268L1091 255" stroke="#A5BA74" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 
   <g>
@@ -96,7 +96,7 @@
     <rect x="848" y="496" width="184" height="10" rx="5" fill="#34413A"/>
   </g>
 
-  <circle cx="1178" cy="182" r="2.5" fill="#84B7AB"/>
-  <circle cx="1204" cy="466" r="2.5" fill="#84B7AB"/>
+  <circle cx="1178" cy="182" r="2.5" fill="#A5BA74"/>
+  <circle cx="1204" cy="466" r="2.5" fill="#A5BA74"/>
   <circle cx="1200" cy="86" r="1.8" fill="#7A715C"/>
 </svg>

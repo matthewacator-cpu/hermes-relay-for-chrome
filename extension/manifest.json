@@ -3,7 +3,7 @@
   "name": "Hermes Relay for Chrome",
   "short_name": "Hermes Relay",
   "version": "0.1.0",
-  "description": "Hermes Relay for Chrome gives Hermes Agent a direct line into the browser for page context, capture, watchlists, and AI handoff.",
+  "description": "Browser extension for Hermes Agent by Nous Research: page context, continuity, tracked pages, and AI handoff.",
   "homepage_url": "https://github.com/matthewacator-cpu/hermes-relay-for-chrome",
   "minimum_chrome_version": "114",
   "permissions": [

@@ -37,3 +37,4 @@ extension/icons/
 - verify context injection works on at least one supported provider
 - verify the watchlist and snapshot flows work after extension reload
 - confirm the zip installs in Chrome as expected
+- review `docs/launch-copy.md` before publishing the Chrome Web Store listing or launch posts

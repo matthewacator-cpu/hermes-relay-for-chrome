@@ -1,17 +1,17 @@
 :root {
   color-scheme: dark;
-  --bg: #050907;
-  --panel: rgba(9, 20, 18, 0.92);
-  --panel-strong: rgba(11, 24, 21, 0.96);
-  --border: rgba(118, 127, 104, 0.24);
-  --border-strong: rgba(149, 161, 136, 0.32);
-  --text: #f1e4d1;
-  --muted: #b8ad9e;
+  --bg: #080a07;
+  --panel: rgba(15, 19, 13, 0.92);
+  --panel-strong: rgba(18, 23, 16, 0.96);
+  --border: rgba(122, 113, 92, 0.22);
+  --border-strong: rgba(168, 187, 122, 0.24);
+  --text: #f2ead7;
+  --muted: #cbbf9e;
   --accent: #eadbc5;
-  --accent-strong: #8fb1a3;
-  --accent-soft: rgba(98, 124, 112, 0.2);
-  --good: #93b3a1;
-  --bad: #c97c74;
+  --accent-strong: #a5ba74;
+  --accent-soft: rgba(165, 186, 116, 0.16);
+  --good: #a5ba74;
+  --bad: #b88478;
   --shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
 }
 
@@ -26,9 +26,9 @@ body {
   width: 420px;
   min-height: 700px;
   background:
-    radial-gradient(circle at top left, rgba(45, 78, 67, 0.28), transparent 34%),
-    radial-gradient(circle at top right, rgba(146, 124, 88, 0.08), transparent 28%),
-    linear-gradient(180deg, #08110e 0%, #040807 100%);
+    radial-gradient(circle at top left, rgba(96, 110, 74, 0.18), transparent 34%),
+    radial-gradient(circle at top right, rgba(146, 124, 88, 0.07), transparent 28%),
+    linear-gradient(180deg, #0b0f0a 0%, #050706 100%);
   color: var(--text);
   font: 13px/1.5 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -56,7 +56,7 @@ button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 summary:focus-visible {
-  outline: 2px solid rgba(143, 177, 163, 0.34);
+  outline: 2px solid rgba(165, 186, 116, 0.3);
   outline-offset: 2px;
 }
 
@@ -75,8 +75,8 @@ summary:focus-visible {
   border-radius: 18px;
   border: 1px solid var(--border-strong);
   background:
-    radial-gradient(circle at top right, rgba(66, 96, 83, 0.22), transparent 36%),
-    linear-gradient(180deg, rgba(14, 29, 25, 0.98), rgba(9, 18, 16, 0.95));
+    radial-gradient(circle at top right, rgba(106, 121, 76, 0.18), transparent 36%),
+    linear-gradient(180deg, rgba(20, 25, 17, 0.98), rgba(11, 14, 10, 0.95));
   box-shadow: var(--shadow);
   overflow: hidden;
 }
@@ -115,7 +115,7 @@ summary:focus-visible {
   display: grid;
   place-items: center;
   background: linear-gradient(180deg, rgba(21, 38, 33, 0.96), rgba(10, 18, 15, 0.96));
-  border: 1px solid rgba(143, 177, 163, 0.28);
+  border: 1px solid rgba(168, 187, 122, 0.24);
   color: var(--accent-strong);
   box-shadow: inset 0 1px 0 rgba(255, 246, 230, 0.06), 0 10px 24px rgba(8, 15, 13, 0.4);
 }
@@ -128,7 +128,7 @@ summary:focus-visible {
 .panel {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(14, 26, 22, 0.94), rgba(8, 15, 13, 0.94));
+  background: linear-gradient(180deg, rgba(19, 24, 17, 0.94), rgba(10, 13, 10, 0.94));
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 15px;
@@ -171,8 +171,8 @@ summary:focus-visible {
   height: 11px;
   margin-top: 4px;
   border-radius: 999px;
-  background: #5f685a;
-  box-shadow: 0 0 0 5px rgba(143, 177, 163, 0.09);
+  background: #6d7757;
+  box-shadow: 0 0 0 5px rgba(165, 186, 116, 0.08);
 }
 
 .status-dot.ok {
@@ -205,8 +205,8 @@ summary:focus-visible {
 }
 
 .continuity-banner.seen {
-  border-color: rgba(143, 177, 163, 0.44);
-  background: rgba(98, 124, 112, 0.16);
+  border-color: rgba(168, 187, 122, 0.38);
+  background: rgba(165, 186, 116, 0.14);
 }
 
 .continuity-banner.new {
@@ -261,8 +261,8 @@ summary:focus-visible {
 
 .field input:focus,
 .field textarea:focus {
-  border-color: rgba(143, 177, 163, 0.44);
-  box-shadow: 0 0 0 4px rgba(98, 124, 112, 0.16);
+  border-color: rgba(168, 187, 122, 0.38);
+  box-shadow: 0 0 0 4px rgba(165, 186, 116, 0.14);
 }
 
 .mode-row,
@@ -288,8 +288,8 @@ summary:focus-visible {
 
 .mode-chip.active,
 .target-chip.active {
-  background: linear-gradient(180deg, rgba(45, 72, 63, 0.5), rgba(20, 35, 31, 0.44));
-  border-color: rgba(143, 177, 163, 0.34);
+  background: linear-gradient(180deg, rgba(103, 119, 74, 0.32), rgba(54, 64, 38, 0.28));
+  border-color: rgba(168, 187, 122, 0.32);
   color: var(--text);
   box-shadow: inset 0 1px 0 rgba(255, 246, 230, 0.04), 0 8px 18px rgba(9, 15, 13, 0.28);
 }
@@ -334,8 +334,8 @@ summary:focus-visible {
 }
 
 .primary-btn {
-  background: linear-gradient(180deg, #28413b, #172723);
-  border-color: rgba(143, 177, 163, 0.34);
+  background: linear-gradient(180deg, #738550, #5d6d40);
+  border-color: rgba(168, 187, 122, 0.34);
   box-shadow: 0 12px 24px rgba(8, 15, 13, 0.3);
 }
 
@@ -389,8 +389,8 @@ summary:focus-visible {
 
 .hint-panel {
   background:
-    radial-gradient(circle at top right, rgba(143, 177, 163, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(12, 20, 18, 0.96), rgba(7, 13, 11, 0.94));
+    radial-gradient(circle at top right, rgba(165, 186, 116, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(18, 24, 17, 0.96), rgba(10, 14, 10, 0.94));
 }
 
 .hint-body {
@@ -438,7 +438,7 @@ summary:focus-visible {
   min-height: 24px;
   padding: 0 8px;
   border-radius: 999px;
-  background: rgba(98, 124, 112, 0.18);
+  background: rgba(165, 186, 116, 0.14);
   color: var(--accent);
   font-size: 11px;
   font-weight: 600;
