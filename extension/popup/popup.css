@@ -1,17 +1,18 @@
 :root {
   color-scheme: dark;
-  --bg: #070b13;
-  --panel: rgba(16, 24, 39, 0.92);
-  --border: rgba(132, 157, 204, 0.18);
-  --border-strong: rgba(114, 173, 255, 0.3);
-  --text: #edf2ff;
-  --muted: #9eacc8;
-  --accent: #7ad7ff;
-  --accent-strong: #4099ff;
-  --accent-soft: rgba(80, 165, 255, 0.14);
-  --good: #4ade80;
-  --bad: #fb7185;
-  --shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  --bg: #050907;
+  --panel: rgba(9, 20, 18, 0.92);
+  --panel-strong: rgba(11, 24, 21, 0.96);
+  --border: rgba(118, 127, 104, 0.24);
+  --border-strong: rgba(149, 161, 136, 0.32);
+  --text: #f1e4d1;
+  --muted: #b8ad9e;
+  --accent: #eadbc5;
+  --accent-strong: #8fb1a3;
+  --accent-soft: rgba(98, 124, 112, 0.2);
+  --good: #93b3a1;
+  --bad: #c97c74;
+  --shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
 }
 
 * {
@@ -25,9 +26,9 @@ body {
   width: 420px;
   min-height: 700px;
   background:
-    radial-gradient(circle at top left, rgba(64, 153, 255, 0.18), transparent 32%),
-    radial-gradient(circle at top right, rgba(122, 215, 255, 0.08), transparent 24%),
-    linear-gradient(180deg, #0a0f19 0%, #060910 100%);
+    radial-gradient(circle at top left, rgba(45, 78, 67, 0.28), transparent 34%),
+    radial-gradient(circle at top right, rgba(146, 124, 88, 0.08), transparent 28%),
+    linear-gradient(180deg, #08110e 0%, #040807 100%);
   color: var(--text);
   font: 13px/1.5 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -55,7 +56,7 @@ button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 summary:focus-visible {
-  outline: 2px solid rgba(122, 215, 255, 0.35);
+  outline: 2px solid rgba(143, 177, 163, 0.34);
   outline-offset: 2px;
 }
 
@@ -74,8 +75,8 @@ summary:focus-visible {
   border-radius: 18px;
   border: 1px solid var(--border-strong);
   background:
-    radial-gradient(circle at top right, rgba(64, 153, 255, 0.18), transparent 34%),
-    linear-gradient(180deg, rgba(19, 29, 48, 0.98), rgba(12, 18, 32, 0.94));
+    radial-gradient(circle at top right, rgba(66, 96, 83, 0.22), transparent 36%),
+    linear-gradient(180deg, rgba(14, 29, 25, 0.98), rgba(9, 18, 16, 0.95));
   box-shadow: var(--shadow);
   overflow: hidden;
 }
@@ -86,7 +87,7 @@ summary:focus-visible {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 28%);
+  background: linear-gradient(180deg, rgba(255, 248, 236, 0.035), transparent 28%);
 }
 
 .hero > *,
@@ -104,7 +105,7 @@ summary:focus-visible {
 
 .hero p {
   margin: 0;
-  color: #d5def1;
+  color: #d1c5b6;
 }
 
 .mark {
@@ -113,10 +114,10 @@ summary:focus-visible {
   border-radius: 16px;
   display: grid;
   place-items: center;
-  background: linear-gradient(180deg, rgba(25, 41, 72, 0.95), rgba(11, 18, 32, 0.95));
-  border: 1px solid rgba(122, 215, 255, 0.26);
-  color: var(--accent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px rgba(13, 35, 72, 0.36);
+  background: linear-gradient(180deg, rgba(21, 38, 33, 0.96), rgba(10, 18, 15, 0.96));
+  border: 1px solid rgba(143, 177, 163, 0.28);
+  color: var(--accent-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 246, 230, 0.06), 0 10px 24px rgba(8, 15, 13, 0.4);
 }
 
 .mark svg {
@@ -127,7 +128,7 @@ summary:focus-visible {
 .panel {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(20, 29, 47, 0.92), rgba(12, 18, 32, 0.92));
+  background: linear-gradient(180deg, rgba(14, 26, 22, 0.94), rgba(8, 15, 13, 0.94));
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 15px;
@@ -170,8 +171,8 @@ summary:focus-visible {
   height: 11px;
   margin-top: 4px;
   border-radius: 999px;
-  background: #60718d;
-  box-shadow: 0 0 0 5px rgba(125, 211, 252, 0.08);
+  background: #5f685a;
+  box-shadow: 0 0 0 5px rgba(143, 177, 163, 0.09);
 }
 
 .status-dot.ok {
@@ -213,7 +214,7 @@ summary:focus-visible {
 
 .field span,
 .target-label {
-  color: #d2dcf2;
+  color: #ddcfbc;
   font-size: 12px;
   font-weight: 500;
 }
@@ -222,12 +223,12 @@ summary:focus-visible {
 .field textarea {
   width: 100%;
   border-radius: 12px;
-  border: 1px solid rgba(132, 157, 204, 0.16);
-  background: rgba(8, 12, 22, 0.66);
+  border: 1px solid rgba(118, 127, 104, 0.18);
+  background: rgba(5, 10, 9, 0.72);
   color: var(--text);
   padding: 11px 12px;
   outline: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 1px 0 rgba(255, 246, 230, 0.03);
 }
 
 .field textarea {
@@ -237,13 +238,13 @@ summary:focus-visible {
 
 .field input::placeholder,
 .field textarea::placeholder {
-  color: #7d8aa5;
+  color: #8e8476;
 }
 
 .field input:focus,
 .field textarea:focus {
-  border-color: rgba(80, 165, 255, 0.5);
-  box-shadow: 0 0 0 4px rgba(80, 165, 255, 0.14);
+  border-color: rgba(143, 177, 163, 0.44);
+  box-shadow: 0 0 0 4px rgba(98, 124, 112, 0.16);
 }
 
 .mode-row,
@@ -260,8 +261,8 @@ summary:focus-visible {
 .mode-chip,
 .target-chip {
   border-radius: 999px;
-  border: 1px solid rgba(132, 157, 204, 0.14);
-  background: rgba(8, 12, 22, 0.62);
+  border: 1px solid rgba(118, 127, 104, 0.16);
+  background: rgba(6, 12, 10, 0.72);
   color: var(--muted);
   padding: 8px 12px;
   cursor: pointer;
@@ -269,10 +270,10 @@ summary:focus-visible {
 
 .mode-chip.active,
 .target-chip.active {
-  background: linear-gradient(180deg, rgba(61, 128, 214, 0.34), rgba(35, 73, 129, 0.28));
-  border-color: rgba(106, 169, 255, 0.38);
+  background: linear-gradient(180deg, rgba(45, 72, 63, 0.5), rgba(20, 35, 31, 0.44));
+  border-color: rgba(143, 177, 163, 0.34);
   color: var(--text);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 18px rgba(20, 49, 96, 0.26);
+  box-shadow: inset 0 1px 0 rgba(255, 246, 230, 0.04), 0 8px 18px rgba(9, 15, 13, 0.28);
 }
 
 .target-row {
@@ -293,7 +294,7 @@ summary:focus-visible {
 .icon-btn,
 .recent-btn {
   border-radius: 12px;
-  border: 1px solid rgba(132, 157, 204, 0.16);
+  border: 1px solid rgba(118, 127, 104, 0.18);
   color: var(--text);
   cursor: pointer;
 }
@@ -307,9 +308,9 @@ summary:focus-visible {
 }
 
 .primary-btn {
-  background: linear-gradient(180deg, #2674c3, #1a5492);
-  border-color: rgba(106, 169, 255, 0.5);
-  box-shadow: 0 12px 24px rgba(21, 67, 122, 0.26);
+  background: linear-gradient(180deg, #28413b, #172723);
+  border-color: rgba(143, 177, 163, 0.34);
+  box-shadow: 0 12px 24px rgba(8, 15, 13, 0.3);
 }
 
 .primary-btn.small {
@@ -319,11 +320,11 @@ summary:focus-visible {
 .secondary-btn,
 .icon-btn,
 .recent-btn {
-  background: rgba(13, 19, 33, 0.82);
+  background: rgba(10, 17, 15, 0.84);
 }
 
 .ghost-btn {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 248, 236, 0.02);
 }
 
 .icon-btn {
@@ -334,7 +335,7 @@ summary:focus-visible {
 .advanced {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(132, 157, 204, 0.14);
+  border-top: 1px solid rgba(118, 127, 104, 0.16);
 }
 
 .advanced summary {
@@ -362,12 +363,12 @@ summary:focus-visible {
 
 .hint-panel {
   background:
-    radial-gradient(circle at top right, rgba(122, 215, 255, 0.12), transparent 32%),
-    linear-gradient(180deg, rgba(16, 22, 38, 0.94), rgba(10, 16, 28, 0.92));
+    radial-gradient(circle at top right, rgba(143, 177, 163, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(12, 20, 18, 0.96), rgba(7, 13, 11, 0.94));
 }
 
 .hint-body {
-  color: #c4d0e7;
+  color: #cec1af;
 }
 
 .output {
@@ -377,11 +378,11 @@ summary:focus-visible {
   overflow: auto;
   padding: 14px;
   border-radius: 14px;
-  border: 1px solid rgba(132, 157, 204, 0.14);
-  background: linear-gradient(180deg, rgba(8, 12, 22, 0.92), rgba(11, 16, 29, 0.9));
+  border: 1px solid rgba(118, 127, 104, 0.16);
+  background: linear-gradient(180deg, rgba(6, 11, 10, 0.94), rgba(8, 14, 12, 0.92));
   white-space: pre-wrap;
   word-break: break-word;
-  color: #dfe9ff;
+  color: #f0e4d1;
 }
 
 .recent-list {
@@ -394,8 +395,8 @@ summary:focus-visible {
   gap: 8px;
   padding: 12px;
   border-radius: 14px;
-  border: 1px solid rgba(132, 157, 204, 0.14);
-  background: linear-gradient(180deg, rgba(12, 18, 32, 0.84), rgba(9, 13, 23, 0.82));
+  border: 1px solid rgba(118, 127, 104, 0.16);
+  background: linear-gradient(180deg, rgba(10, 17, 15, 0.88), rgba(7, 12, 11, 0.86));
 }
 
 .recent-top {
@@ -411,7 +412,7 @@ summary:focus-visible {
   min-height: 24px;
   padding: 0 8px;
   border-radius: 999px;
-  background: rgba(80, 165, 255, 0.12);
+  background: rgba(98, 124, 112, 0.18);
   color: var(--accent);
   font-size: 11px;
   font-weight: 600;
@@ -430,7 +431,7 @@ summary:focus-visible {
 }
 
 .recent-summary {
-  color: #c6d2ea;
+  color: #d3c7b8;
   font-size: 12px;
 }
 
