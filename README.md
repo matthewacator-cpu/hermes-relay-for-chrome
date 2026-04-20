@@ -1,5 +1,9 @@
 # Hermes Relay
 
+<p align="center">
+  <img src="./assets/readme-hero.svg" alt="Hermes Relay hero banner" width="100%" />
+</p>
+
 > A standalone Chrome extension for [Hermes Agent](https://hermes-agent.nousresearch.com/) that gives Hermes a browser-native control layer for capture, memory, watchlists, and AI context handoff.
 
 Hermes Relay turns the browser into a working surface for Hermes.
@@ -224,6 +228,8 @@ hermes-relay/
   LICENSE
   README.md
   package.json
+  assets/
+    readme-hero.svg
   extension/
     manifest.json
     background.js
