@@ -7,13 +7,24 @@ function setOutput(text) {
 }
 
 function setPageActionAvailability(enabled) {
-  ['summarize-page', 'ask-page', 'inject-context'].forEach((id) => {
+  ['summarize-page', 'ask-page', 'build-context'].forEach((id) => {
     const button = $(id);
     if (button) {
       button.disabled = !enabled;
     }
   });
   $('ask-prompt').disabled = !enabled;
+}
+
+function relativeTime(iso) {
+  if (!iso) return 'just now';
+  const delta = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(delta / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
 }
 
 function setBusy(buttonId, label, busy) {
@@ -79,10 +90,32 @@ function renderPage(response) {
   $('page-continuity').classList.toggle('new', !continuity?.seenBefore);
 }
 
+function renderHandoff(response) {
+  const handoff = response?.handoff || {};
+  const insertButton = $('insert-latest');
+  const canInsert = Boolean(handoff.available && handoff.canInsertHere);
+  if (insertButton) {
+    insertButton.disabled = !canInsert;
+  }
+
+  if (!handoff.available) {
+    $('handoff-status').textContent = 'Build context from a page before inserting it into a chat.';
+    return;
+  }
+
+  if (!handoff.canInsertHere) {
+    $('handoff-status').textContent = `Latest context ready from ${handoff.title || 'a recent page'}. Switch to Claude, ChatGPT, or Gemini to insert it.`;
+    return;
+  }
+
+  $('handoff-status').textContent = `Latest context ready from ${handoff.title || 'a recent page'} · ${relativeTime(handoff.timestamp)}`;
+}
+
 async function refreshAll() {
-  const [status, page] = await Promise.all([
+  const [status, page, handoff] = await Promise.all([
     sendMessage({ type: 'GET_STATUS' }),
     sendMessage({ type: 'GET_ACTIVE_PAGE_CONTEXT' }),
+    sendMessage({ type: 'GET_HANDOFF_STATUS' }),
   ]);
   const workspace = await sendMessage({
     type: 'GET_WORKSPACE_STATE',
@@ -91,6 +124,7 @@ async function refreshAll() {
   });
   renderStatus(status);
   renderPage(page);
+  renderHandoff(handoff);
   $('ask-prompt').value = workspace.workspaceState?.prompt || '';
   setOutput(workspace.workspaceState?.output || 'Hermes responses will appear here.');
 }
@@ -191,37 +225,42 @@ $('ask-page').addEventListener('click', async () => {
   await openWorkspace();
 });
 
-$('inject-context').addEventListener('click', async () => {
+$('build-context').addEventListener('click', async () => {
   const prompt = $('ask-prompt').value.trim();
-  const built = await runAction('inject-context', 'Building…', () => sendMessage({
+  const built = await runAction('build-context', 'Building…', () => sendMessage({
     type: 'BUILD_CONTEXT',
     prompt,
     target: 'auto',
   }));
   if (!built) return;
-
-  const injected = await sendMessage({
-    type: 'INJECT_CONTEXT',
-    text: built.text || '',
-  });
-
-  const finalText = injected.ok
-    ? `${built.text || ''}\n\n[Inserted into active chat]`
-    : `${built.text || ''}\n\n[Insert failed: ${injected.error || 'unknown error'}]`;
-
-  setOutput(finalText);
+  setOutput(built.text || 'Done.');
   await saveWorkspacePatch({
     prompt,
-    output: finalText,
+    output: built.text || '',
     mode: 'inject',
     target: built.target || 'auto',
-    lastAction: 'popup-build-insert-context',
+    lastAction: 'popup-build-context',
     source: 'popup',
   });
+  await refreshAll();
+});
 
-  if (!injected.ok) {
-    await openWorkspace();
-  }
+$('insert-latest').addEventListener('click', async () => {
+  const inserted = await runAction('insert-latest', 'Inserting…', () => sendMessage({
+    type: 'INSERT_LATEST_CONTEXT',
+  }));
+  if (!inserted) return;
+
+  const finalText = `${inserted.text || ''}\n\n[Inserted latest context into active chat]`;
+  setOutput(finalText);
+  await saveWorkspacePatch({
+    prompt: $('ask-prompt').value.trim(),
+    output: finalText,
+    mode: 'inject',
+    lastAction: 'popup-insert-latest-context',
+    source: 'popup',
+  });
+  await refreshAll();
 });
 
 $('copy-output').addEventListener('click', async () => {

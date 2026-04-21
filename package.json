@@ -2,11 +2,13 @@
   "name": "hermes-relay-for-chrome",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Browser extension for Hermes Agent by Nous Research with page context, continuity, tracked pages, and AI handoff.",
   "scripts": {
     "check:manifest": "node -e \"JSON.parse(require('fs').readFileSync('extension/manifest.json', 'utf8')); console.log('manifest ok')\"",
     "check:js": "node --check extension/background.js && node --check extension/content/chat.js && node --check extension/popup/popup.js && node --check extension/sidepanel/sidepanel.js",
-    "check": "npm run check:manifest && npm run check:js",
+    "test": "node --test",
+    "check": "npm run check:manifest && npm run check:js && npm run test",
     "package:chrome": "node scripts/package-chrome.mjs"
   }
 }
