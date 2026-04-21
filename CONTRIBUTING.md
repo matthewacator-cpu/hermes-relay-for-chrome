@@ -15,10 +15,13 @@ npm run check
 
 ## Project Shape
 
-- `extension/background.js`: Hermes API calls, storage, context menus, watchlist state
+- `extension/background.js`: message routing, bootstrap, and Chrome event wiring
+- `extension/lib/background/`: Hermes client, storage, page context, workflows, handoff helpers
+- `extension/lib/shared/`: shared constants and URL/util helpers
 - `extension/popup/`: fast actions and connection UI
 - `extension/sidepanel/`: persistent workspace for page-aware flows
 - `extension/content/chat.js`: context injection into supported chat UIs
+- `test/`: Node smoke tests for storage, handoff, Hermes client, and workflow helpers
 
 ## Guardrails
 

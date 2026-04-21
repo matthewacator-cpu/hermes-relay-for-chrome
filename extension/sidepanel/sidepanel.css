@@ -255,6 +255,7 @@ input:focus {
 .toolbar-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .primary-btn,
@@ -397,4 +398,10 @@ input:focus {
   color: var(--muted);
   font-size: 12px;
   margin-top: 8px;
+}
+
+.handoff-status {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
 }

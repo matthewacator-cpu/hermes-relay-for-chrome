@@ -473,6 +473,10 @@ summary:focus-visible {
   padding: 0 11px;
 }
 
+.handoff-status {
+  margin-top: 10px;
+}
+
 @media (max-width: 430px) {
   html,
   body {

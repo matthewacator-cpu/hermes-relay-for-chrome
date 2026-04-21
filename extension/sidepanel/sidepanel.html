@@ -76,7 +76,7 @@
         <textarea id="workspace-prompt" rows="5" placeholder="Tell Hermes what you want from this page."></textarea>
         <div class="toolbar">
           <div class="target-wrap">
-            <span>Target</span>
+            <span>Handoff Target</span>
             <select id="workspace-target">
               <option value="auto">Auto</option>
               <option value="claude">Claude</option>
@@ -87,9 +87,11 @@
           </div>
           <div class="toolbar-actions">
             <button id="run-workflow" class="primary-btn">Run</button>
-            <button id="inject-workflow" class="secondary-btn">Build + Insert Context</button>
+            <button id="build-context" class="secondary-btn">Build Context</button>
+            <button id="insert-latest" class="secondary-btn">Insert Latest</button>
           </div>
         </div>
+        <div id="handoff-status" class="handoff-status">No saved handoff context yet.</div>
       </section>
 
       <section class="panel">

@@ -164,7 +164,7 @@ A good first run looks like this:
 2. Click **Summarize** or **Ask**
 3. Save a note or snapshot if the page matters later
 4. Open the **Workspace** side panel for continuity, notes, snapshots, and memory actions
-5. Use **Build Context** or **Inject Context** to continue work in another assistant
+5. Use **Build Context** to create a handoff bundle, then **Insert Latest** on Claude, ChatGPT, or Gemini
 
 ---
 
@@ -204,6 +204,7 @@ This validates:
 - `extension/content/chat.js`
 - `extension/popup/popup.js`
 - `extension/sidepanel/sidepanel.js`
+- smoke tests under `test/`
 
 ---
 
@@ -243,6 +244,9 @@ hermes-relay/
   extension/
     manifest.json
     background.js
+    lib/
+      background/
+      shared/
     content/
       chat.js
     popup/
@@ -253,6 +257,7 @@ hermes-relay/
       sidepanel.html
       sidepanel.css
       sidepanel.js
+  test/
 ```
 
 ---

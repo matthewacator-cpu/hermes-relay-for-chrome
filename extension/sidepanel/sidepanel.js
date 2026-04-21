@@ -27,7 +27,8 @@ function setWorkspaceDisabled(disabled) {
     'workspace-prompt',
     'workspace-target',
     'run-workflow',
-    'inject-workflow',
+    'build-context',
+    'insert-latest',
   ].forEach((id) => {
     const element = $(id);
     if (element) {
@@ -109,6 +110,27 @@ function renderContinuity(continuity) {
   stats.innerHTML = chips.length
     ? chips.map((chip) => `<span class="tag">${escapeHtml(chip)}</span>`).join('')
     : '<span class="tag">New to Hermes</span>';
+}
+
+function renderHandoffStatus(response) {
+  const handoff = response?.handoff || {};
+  const insertButton = $('insert-latest');
+  const canInsert = Boolean(handoff.available && handoff.canInsertHere && currentPage);
+  if (insertButton) {
+    insertButton.disabled = !canInsert;
+  }
+
+  if (!handoff.available) {
+    $('handoff-status').textContent = 'Build context from a page before inserting it into a chat.';
+    return;
+  }
+
+  if (!handoff.canInsertHere) {
+    $('handoff-status').textContent = `Latest context ready from ${handoff.title || 'a recent page'}. Switch to Claude, ChatGPT, or Gemini to insert it.`;
+    return;
+  }
+
+  $('handoff-status').textContent = `Latest context ready from ${handoff.title || 'a recent page'} · ${relativeTime(handoff.timestamp)}`;
 }
 
 async function restoreWorkspaceState() {
@@ -296,11 +318,17 @@ async function refreshSnapshots() {
   renderSnapshots(response.snapshots || []);
 }
 
+async function refreshHandoffStatus() {
+  const response = await sendMessage({ type: 'GET_HANDOFF_STATUS' });
+  renderHandoffStatus(response);
+}
+
 async function refreshPage() {
   const previousWorkspaceUrl = currentWorkspaceUrl;
   const response = await sendMessage({ type: 'GET_ACTIVE_PAGE_CONTEXT' });
   if (!response.ok) {
     renderUnavailablePage(response.error || 'Could not read the active page.');
+    await refreshHandoffStatus();
     return;
   }
   renderPage(response.page, response.tab, response.note, response.continuity);
@@ -310,6 +338,7 @@ async function refreshPage() {
   }
   await refreshSnapshots();
   await refreshDirectThread();
+  await refreshHandoffStatus();
 }
 
 async function refreshDirectThread() {
@@ -334,15 +363,14 @@ function setMode(mode, { persist = true } = {}) {
   }
 }
 
-async function runCurrentWorkflow(injectAfter) {
+async function runCurrentWorkflow() {
   if (!currentPage) {
     await refreshPage();
   }
 
-  const executionMode = injectAfter ? 'inject' : currentMode;
   const response = await sendMessage({
     type: 'RUN_WORKFLOW',
-    mode: executionMode,
+    mode: currentMode,
     prompt: $('workspace-prompt').value.trim(),
     target: $('workspace-target').value,
     page: currentPage,
@@ -355,20 +383,53 @@ async function runCurrentWorkflow(injectAfter) {
 
   setOutput(response.text || '');
   persistWorkspaceState({
-    lastAction: injectAfter ? 'build-context' : `workflow-${executionMode}`,
+    lastAction: `workflow-${currentMode}`,
     target: $('workspace-target').value,
   });
   await refreshHistory();
+}
 
-  if (injectAfter) {
-    const injected = await sendMessage({
-      type: 'INJECT_CONTEXT',
-      text: response.text || '',
-    });
-    if (!injected.ok) {
-      setOutput(`${response.text || ''}\n\n[Injection failed: ${injected.error || 'unknown error'}]`);
-    }
+async function buildContext() {
+  if (!currentPage) {
+    await refreshPage();
   }
+
+  const response = await sendMessage({
+    type: 'BUILD_CONTEXT',
+    prompt: $('workspace-prompt').value.trim(),
+    target: $('workspace-target').value,
+  });
+
+  if (!response.ok) {
+    setOutput(response.error || 'Could not build context.');
+    return;
+  }
+
+  setOutput(response.text || '');
+  persistWorkspaceState({
+    lastAction: 'build-context',
+    target: response.target || $('workspace-target').value,
+  });
+  await refreshHistory();
+  await refreshHandoffStatus();
+}
+
+async function insertLatestContext() {
+  const response = await sendMessage({
+    type: 'INSERT_LATEST_CONTEXT',
+  });
+
+  if (!response.ok) {
+    setOutput(response.error || 'Could not insert the latest context.');
+    return;
+  }
+
+  setOutput(`${response.text || ''}\n\n[Inserted latest context into active chat]`);
+  persistWorkspaceState({
+    lastAction: 'insert-latest-context',
+  });
+  await refreshHistory();
+  await refreshHandoffStatus();
 }
 
 $('refresh-page').addEventListener('click', refreshPage);
@@ -482,11 +543,15 @@ document.querySelectorAll('.workflow-btn').forEach((button) => {
 });
 
 $('run-workflow').addEventListener('click', () => {
-  runCurrentWorkflow(false);
+  runCurrentWorkflow();
 });
 
-$('inject-workflow').addEventListener('click', () => {
-  runCurrentWorkflow(true);
+$('build-context').addEventListener('click', () => {
+  buildContext();
+});
+
+$('insert-latest').addEventListener('click', () => {
+  insertLatestContext();
 });
 
 document.querySelectorAll('.memory-btn').forEach((button) => {
@@ -600,6 +665,7 @@ async function initializeWorkspace() {
   await refreshPage();
   await refreshHistory();
   await refreshTrackedPages();
+  await refreshHandoffStatus();
 }
 
 window.addEventListener('focus', () => {

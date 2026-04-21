@@ -4,7 +4,7 @@
   "short_name": "Hermes Relay",
   "version": "0.1.0",
   "description": "Browser extension for Hermes Agent by Nous Research: page context, continuity, tracked pages, and AI handoff.",
-  "homepage_url": "https://github.com/matthewacator-cpu/hermes-relay-for-chrome",
+  "homepage_url": "https://github.com/workingclassbuddha/hermes-relay-for-chrome",
   "minimum_chrome_version": "114",
   "permissions": [
     "storage",
@@ -43,7 +43,8 @@
     "https://gemini.google.com/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "icons": {
     "16": "icons/icon-16.png",
