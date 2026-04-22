@@ -4,3 +4,4 @@ dist/
 build/
 coverage/
 *.log
+extension/local-dev-config.json

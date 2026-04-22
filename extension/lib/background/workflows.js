@@ -179,6 +179,7 @@ export function createRelayOperations({
   storageApi,
   pageContextApi,
   hermesClient,
+  getConfig = () => storageApi.getConfig(),
   browser = globalThis.chrome,
   uuid = () => crypto.randomUUID(),
   now = () => new Date().toISOString(),
@@ -213,7 +214,7 @@ export function createRelayOperations({
       };
     }
 
-    const config = await storageApi.getConfig();
+    const config = await getConfig();
     const meta = buildDirectThreadMeta(config, current.page, current.tab);
     const threads = await storageApi.getDirectThreads();
     return {
@@ -320,7 +321,7 @@ export function createRelayOperations({
       ? { ...current.page, selection: selectionText }
       : current.page;
 
-    const config = await storageApi.getConfig();
+    const config = await getConfig();
     const meta = buildDirectThreadMeta(config, activePage, current.tab);
     const promptText = prompt.trim() || 'Take in this page and tell me what matters.';
     const result = await hermesClient.callResponse(config, {
@@ -394,7 +395,7 @@ export function createRelayOperations({
       throw new Error('No active tab available.');
     }
 
-    const config = await storageApi.getConfig();
+    const config = await getConfig();
     const conversation = buildConversationId(config, `workflow-${mode}`);
     const effectiveTarget = mode === 'inject'
       ? (target === 'auto' ? inferAssistantTarget(current.page.url) : target)
@@ -458,7 +459,7 @@ export function createRelayOperations({
       throw new Error('No active tab available.');
     }
 
-    const config = await storageApi.getConfig();
+    const config = await getConfig();
     const target = requestedTarget === 'auto'
       ? inferAssistantTarget(current.tab?.url || current.page.url)
       : requestedTarget;
@@ -529,7 +530,7 @@ export function createRelayOperations({
       throw new Error('No earlier snapshot exists for this page yet.');
     }
 
-    const config = await storageApi.getConfig();
+    const config = await getConfig();
     const conversation = buildConversationId(config, 'snapshot-compare');
     const prompt = [
       `Current page title: ${current.page.title || '(untitled)'}`,

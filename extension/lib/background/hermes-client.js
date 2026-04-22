@@ -6,6 +6,8 @@ import {
 } from '../shared/constants.js';
 import { normalizeBaseUrl } from '../shared/utils.js';
 
+const AUTH_PREFLIGHT_TIMEOUT_MS = 8000;
+
 function uniqueBaseUrls(urls = []) {
   return [...new Set(
     urls
@@ -160,6 +162,145 @@ export function createHermesClient({
     };
   }
 
+  function invalidApiKeyResult(baseUrl, via, status) {
+    return {
+      ok: false,
+      ran: true,
+      authRequired: true,
+      status: 'invalid-api-key',
+      httpStatus: status,
+      via,
+      baseUrl,
+      message: 'Hermes rejected the saved API key during authenticated preflight.',
+    };
+  }
+
+  async function probeModelsAccess(config, baseUrl) {
+    try {
+      const response = await fetchWithTimeout(`${baseUrl}/v1/models`, {
+        method: 'GET',
+        headers: authHeaders(config),
+      }, HEALTH_TIMEOUT_MS);
+
+      if (response.ok) {
+        return {
+          ok: true,
+          ran: true,
+          status: 'ok',
+          via: 'models',
+          baseUrl,
+          message: 'Authenticated API access verified via /v1/models.',
+        };
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        return invalidApiKeyResult(baseUrl, 'models', response.status);
+      }
+
+      if (response.status === 404 || response.status === 405 || response.status === 501) {
+        return {
+          ok: false,
+          ran: true,
+          unsupported: true,
+          status: response.status,
+          via: 'models',
+          baseUrl,
+          message: 'Hermes does not expose /v1/models. Falling back to a tiny authenticated response check.',
+        };
+      }
+
+      return {
+        ok: false,
+        ran: true,
+        status: response.status,
+        via: 'models',
+        baseUrl,
+        message: `Authenticated preflight returned HTTP ${response.status} from /v1/models.`,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        ran: true,
+        status: 'offline',
+        via: 'models',
+        baseUrl,
+        message: error.message || 'Unable to verify authenticated Hermes access.',
+      };
+    }
+  }
+
+  async function probeResponsesAccess(config, baseUrl, includeStoreFlag = true) {
+    const body = {
+      model: config.model,
+      input: 'ping',
+      instructions: 'Reply with ok.',
+    };
+
+    if (includeStoreFlag) {
+      body.store = false;
+    }
+
+    try {
+      const response = await fetchWithTimeout(`${baseUrl}/v1/responses`, {
+        method: 'POST',
+        headers: authHeaders(config),
+        body: JSON.stringify(body),
+      }, AUTH_PREFLIGHT_TIMEOUT_MS);
+
+      if (response.ok) {
+        await response.text().catch(() => '');
+        return {
+          ok: true,
+          ran: true,
+          status: 'ok',
+          via: 'responses',
+          baseUrl,
+          message: 'Authenticated API access verified via /v1/responses.',
+        };
+      }
+
+      if (response.status === 400 && includeStoreFlag) {
+        return probeResponsesAccess(config, baseUrl, false);
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        return invalidApiKeyResult(baseUrl, 'responses', response.status);
+      }
+
+      return {
+        ok: false,
+        ran: true,
+        status: response.status,
+        via: 'responses',
+        baseUrl,
+        message: `Authenticated preflight returned HTTP ${response.status} from /v1/responses.`,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        ran: true,
+        status: 'offline',
+        via: 'responses',
+        baseUrl,
+        message: error.message || 'Unable to verify authenticated Hermes access.',
+      };
+    }
+  }
+
+  async function preflightAccess(config = DEFAULT_CONFIG) {
+    const baseUrl = normalizeBaseUrl(config.baseUrl);
+    const modelsResult = await probeModelsAccess(config, baseUrl);
+    if (modelsResult.ok || modelsResult.authRequired) {
+      return modelsResult;
+    }
+
+    if (modelsResult.unsupported) {
+      return probeResponsesAccess(config, baseUrl, true);
+    }
+
+    return modelsResult;
+  }
+
   async function callResponse(config, { prompt, instructions, conversation }) {
     const response = await fetchWithTimeout(`${normalizeBaseUrl(config.baseUrl)}/v1/responses`, {
       method: 'POST',
@@ -175,6 +316,21 @@ export function createHermesClient({
 
     if (!response.ok) {
       const body = await response.text();
+      let payload = null;
+
+      try {
+        payload = JSON.parse(body);
+      } catch (_) {
+        payload = null;
+      }
+
+      const errorCode = payload?.error?.code || '';
+      if (response.status === 401 || errorCode === 'invalid_api_key') {
+        throw new Error(
+          'Hermes rejected the saved API key. Run npm run setup:local and reload the unpacked extension, or update the key in the popup.',
+        );
+      }
+
       throw new Error(`Hermes API ${response.status}: ${body.slice(0, 200)}`);
     }
 
@@ -190,6 +346,7 @@ export function createHermesClient({
     checkHealth,
     callResponse,
     fetchWithTimeout,
+    preflightAccess,
     probeHealth,
   };
 }

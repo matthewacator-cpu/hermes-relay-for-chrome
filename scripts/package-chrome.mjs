@@ -237,6 +237,7 @@ execFileSync('/usr/bin/zip', [
   '-x',
   '*.DS_Store',
   'icons/icon.svg',
+  'local-dev-config.json',
 ], {
   cwd: extensionDir,
   stdio: 'inherit',

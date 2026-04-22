@@ -80,6 +80,63 @@ test('checkHealth reports authRequired when Hermes rejects the current key', asy
   assert.equal(status.reachable, true);
 });
 
+test('preflightAccess verifies auth via /v1/models when available', async () => {
+  const seenUrls = [];
+  const client = createHermesClient({
+    fetchImpl: async (url) => {
+      seenUrls.push(String(url));
+      return {
+        ok: true,
+      };
+    },
+  });
+
+  const status = await client.preflightAccess({
+    baseUrl: 'http://127.0.0.1:8642',
+    apiKey: 'local-key',
+    model: 'hermes-agent',
+  });
+
+  assert.equal(status.ok, true);
+  assert.equal(status.via, 'models');
+  assert.deepEqual(seenUrls, ['http://127.0.0.1:8642/v1/models']);
+});
+
+test('preflightAccess falls back to /v1/responses when /v1/models is unavailable', async () => {
+  const seenUrls = [];
+  const client = createHermesClient({
+    fetchImpl: async (url) => {
+      seenUrls.push(String(url));
+      if (String(url).endsWith('/v1/models')) {
+        return {
+          ok: false,
+          status: 404,
+        };
+      }
+
+      return {
+        ok: true,
+        async text() {
+          return '{"output_text":"ok"}';
+        },
+      };
+    },
+  });
+
+  const status = await client.preflightAccess({
+    baseUrl: 'http://127.0.0.1:8642',
+    apiKey: 'local-key',
+    model: 'hermes-agent',
+  });
+
+  assert.equal(status.ok, true);
+  assert.equal(status.via, 'responses');
+  assert.deepEqual(seenUrls, [
+    'http://127.0.0.1:8642/v1/models',
+    'http://127.0.0.1:8642/v1/responses',
+  ]);
+});
+
 test('callResponse returns parsed output text', async () => {
   const client = createHermesClient({
     fetchImpl: async () => ({
@@ -110,4 +167,34 @@ test('callResponse returns parsed output text', async () => {
   });
 
   assert.equal(response.text, 'Hermes says hi');
+});
+
+test('callResponse surfaces a setup hint for invalid API keys', async () => {
+  const client = createHermesClient({
+    fetchImpl: async () => ({
+      ok: false,
+      status: 401,
+      async text() {
+        return JSON.stringify({
+          error: {
+            message: 'Invalid API key',
+            code: 'invalid_api_key',
+          },
+        });
+      },
+    }),
+  });
+
+  await assert.rejects(
+    () => client.callResponse({
+      baseUrl: 'http://127.0.0.1:8642',
+      apiKey: 'wrong-key',
+      model: 'hermes-agent',
+    }, {
+      prompt: 'hello',
+      instructions: 'be helpful',
+      conversation: 'relay-test',
+    }),
+    /Run npm run setup:local and reload the unpacked extension/,
+  );
 });
