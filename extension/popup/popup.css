@@ -230,6 +230,25 @@ summary:focus-visible {
   margin-bottom: 0;
 }
 
+.config-source-card {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(118, 127, 104, 0.18);
+  background: rgba(8, 13, 11, 0.68);
+}
+
+.config-source-label {
+  color: #e8dcc8;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.config-source-detail {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .field span,
 .target-label {
   color: #ddcfbc;

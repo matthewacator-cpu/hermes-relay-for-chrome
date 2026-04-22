@@ -12,6 +12,7 @@ const __dirname = path.dirname(__filename);
 const workspaceRoot = path.resolve(__dirname, '..');
 const envPath = path.join(os.homedir(), '.hermes', '.env');
 const extensionPath = path.join(workspaceRoot, 'extension');
+const localConfigPath = path.join(extensionPath, 'local-dev-config.json');
 const zipPath = path.join(workspaceRoot, 'dist', 'hermes-relay-chrome.zip');
 const baseUrls = [...new Set(
   [DEFAULT_CONFIG.baseUrl, ...LOCAL_HERMES_BASE_URLS].map((url) => normalizeBaseUrl(url)),
@@ -77,6 +78,27 @@ function hasHermesCli() {
   return !result.error;
 }
 
+function writeLocalDevConfig({ baseUrl, apiKey }) {
+  const payload = {
+    baseUrl: normalizeBaseUrl(baseUrl || DEFAULT_CONFIG.baseUrl),
+    apiKey: String(apiKey || '').trim(),
+    source: envPath,
+    generatedAt: new Date().toISOString(),
+  };
+
+  fs.writeFileSync(localConfigPath, `${JSON.stringify(payload, null, 2)}\n`, {
+    mode: 0o600,
+  });
+
+  return payload;
+}
+
+function clearLocalDevConfig() {
+  if (fs.existsSync(localConfigPath)) {
+    fs.rmSync(localConfigPath);
+  }
+}
+
 async function main() {
   const envExists = fs.existsSync(envPath);
   const env = envExists ? parseEnv(fs.readFileSync(envPath, 'utf8')) : {};
@@ -87,6 +109,12 @@ async function main() {
   const live = probes.find((item) => item.ok || item.status === 401 || item.status === 403)
     || probes.find((item) => item.reachable)
     || null;
+  const localDevConfig = apiKeyPresent
+    ? writeLocalDevConfig({
+      baseUrl: live?.baseUrl || DEFAULT_CONFIG.baseUrl,
+      apiKey: env.API_SERVER_KEY,
+    })
+    : (clearLocalDevConfig(), null);
 
   console.log('Hermes Relay local setup\n');
   console.log(formatCheck(hermesCliPresent, 'Hermes CLI available', hermesCliPresent ? 'hermes command found' : 'install Hermes Agent first'));
@@ -94,6 +122,7 @@ async function main() {
   console.log(formatCheck(apiServerEnabled, 'API server enabled', apiServerEnabled ? 'API_SERVER_ENABLED=true' : 'add API_SERVER_ENABLED=true'));
   console.log(formatCheck(apiKeyPresent, 'API key configured', apiKeyPresent ? 'API_SERVER_KEY is set' : 'add API_SERVER_KEY=change-me-local-dev'));
   console.log(formatCheck(Boolean(live), 'Hermes API reachable', live ? `${live.baseUrl} (${live.status})` : 'not responding on 127.0.0.1 or localhost'));
+  console.log(formatCheck(Boolean(localDevConfig), 'Local auto-connect file', localDevConfig ? localConfigPath : 'waiting for API_SERVER_KEY in ~/.hermes/.env'));
   console.log(formatCheck(fs.existsSync(extensionPath), 'Extension folder ready', extensionPath));
   console.log(formatCheck(fs.existsSync(zipPath), 'Chrome zip available', zipPath));
 
@@ -118,6 +147,11 @@ async function main() {
   console.log('Or use the packaged zip:\n');
   console.log(zipPath);
   console.log('');
+  if (localDevConfig) {
+    console.log('Reload the unpacked extension in chrome://extensions, then open the popup. Hermes Relay will auto-connect with your local Hermes key.');
+    return;
+  }
+
   console.log('Then open the Hermes Relay popup, paste the same API key once, and click Save & Test.');
 }
 

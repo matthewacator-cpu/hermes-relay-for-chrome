@@ -3,15 +3,96 @@ import { canonicalizeUrl } from './lib/shared/utils.js';
 import { createStorageApi } from './lib/background/storage.js';
 import { createPageContextApi } from './lib/background/page-context.js';
 import { createHermesClient } from './lib/background/hermes-client.js';
+import { buildLocalDevConfigPatch, loadLocalDevConfig } from './lib/background/local-dev-config.js';
 import { createRelayOperations } from './lib/background/workflows.js';
 
 const storageApi = createStorageApi();
 const pageContextApi = createPageContextApi();
 const hermesClient = createHermesClient();
+const readStoredConfig = storageApi.getConfig.bind(storageApi);
+
+async function syncLocalDevConfig() {
+  const [config, localDevConfig] = await Promise.all([
+    readStoredConfig(),
+    loadLocalDevConfig(),
+  ]);
+
+  const patch = buildLocalDevConfigPatch(config, localDevConfig);
+  if (!Object.keys(patch).length) {
+    return {
+      config,
+      localDevConfig,
+    };
+  }
+
+  return {
+    config: await storageApi.setConfig(patch),
+    localDevConfig,
+  };
+}
+
+async function getRuntimeConfig({ ensureReachable = false } = {}) {
+  let { config, localDevConfig } = await syncLocalDevConfig();
+
+  if (!ensureReachable) {
+    return {
+      config,
+      localDevConfig,
+      health: null,
+    };
+  }
+
+  let health = await hermesClient.checkHealth(config);
+  const detectedBaseUrl = health.detectedBaseUrl || '';
+  if ((health.ok || health.authRequired) && detectedBaseUrl && detectedBaseUrl !== config.baseUrl) {
+    config = await storageApi.setConfig({ baseUrl: detectedBaseUrl });
+    health = await hermesClient.checkHealth(config);
+  }
+
+  return {
+    config,
+    localDevConfig,
+    health,
+  };
+}
+
+async function getAuthenticatedPreflight(config, health) {
+  if (!health?.ok) {
+    if (health?.authRequired) {
+      return {
+        ok: false,
+        ran: false,
+        authRequired: true,
+        status: 'invalid-api-key',
+        message: 'Hermes rejected the saved API key during the health check.',
+      };
+    }
+
+    return {
+      ok: false,
+      ran: false,
+      status: 'server-not-ready',
+      message: 'Hermes must be healthy before authenticated access can be verified.',
+    };
+  }
+
+  if (!String(config?.apiKey || '').trim()) {
+    return {
+      ok: false,
+      ran: false,
+      status: 'missing-api-key',
+      message: 'Paste your API key once to verify authenticated access.',
+    };
+  }
+
+  return hermesClient.preflightAccess(config);
+}
+
 const operations = createRelayOperations({
   storageApi,
   pageContextApi,
   hermesClient,
+  getConfig: async () => (await getRuntimeConfig({ ensureReachable: true })).config,
 });
 
 function contextMenuCreate(menu) {
@@ -63,6 +144,7 @@ async function ensureContextMenus() {
 
 async function initializeRelay() {
   await storageApi.ensureStorageSchema();
+  await syncLocalDevConfig();
   await ensureContextMenus();
 }
 
@@ -122,10 +204,18 @@ async function requirePage(page = null) {
 }
 
 async function messageGetStatus() {
-  const config = await storageApi.getConfig();
+  const { config, health, localDevConfig } = await getRuntimeConfig({
+    ensureReachable: true,
+  });
+  const preflight = await getAuthenticatedPreflight(config, health);
   return {
-    health: await hermesClient.checkHealth(config),
+    health,
+    preflight,
     config,
+    localDevConfig: localDevConfig ? {
+      source: localDevConfig.source,
+      generatedAt: localDevConfig.generatedAt,
+    } : null,
   };
 }
 
@@ -219,9 +309,10 @@ const messageHandlers = {
   },
 
   async SAVE_CONFIG(message) {
+    await storageApi.setConfig(message.config || {});
     return {
       ok: true,
-      config: await storageApi.setConfig(message.config || {}),
+      ...(await messageGetStatus()),
     };
   },
 

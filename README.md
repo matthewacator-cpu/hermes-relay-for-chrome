@@ -138,6 +138,7 @@ npm run setup:local
 ```
 
 That local helper checks `~/.hermes/.env`, probes the common local Hermes API URLs, and prints the exact extension and zip paths you can load in Chrome.
+When it finds `API_SERVER_KEY`, it also writes a local ignored `extension/local-dev-config.json` file so the unpacked extension can auto-connect after you reload it in `chrome://extensions`. The packaged zip excludes that file.
 
 Official references:
 
@@ -160,10 +161,10 @@ Official references:
 ### 2. Connect Hermes Relay
 
 1. Open the Hermes Relay popup
-2. Let the popup auto-detect your local Hermes server
-3. Paste your local Hermes API key
-4. Keep the detected base URL unless you are intentionally using a different local server
-5. Click **Save & Test**
+2. Run `npm run setup:local`, then reload the unpacked extension in `chrome://extensions`
+3. Open the popup and let it auto-connect to your local Hermes server
+4. If you are not using the local setup helper, paste your local Hermes API key manually
+5. Click **Save & Test** if you changed any settings by hand
 
 ### 3. Use it on a page
 

@@ -56,20 +56,46 @@ function getEffectiveBaseUrl(health = {}, config = {}) {
   return health.detectedBaseUrl || health.baseUrl || config.baseUrl || 'http://127.0.0.1:8642';
 }
 
-function deriveSetupState(payload = {}, pageResponse = {}) {
+function getPreflightState(payload = {}) {
+  const preflight = payload.preflight || {};
   const health = payload.health || {};
   const config = payload.config || {};
   const hasApiKey = Boolean(String(config.apiKey || '').trim());
+  const authVerified = Boolean(health.ok && preflight.ok);
+  const keyNeedsAttention = Boolean(
+    (health.authRequired && hasApiKey)
+      || preflight.status === 'invalid-api-key',
+  );
+  const connectionNeedsAttention = Boolean(
+    preflight.ran
+      && !preflight.ok
+      && !keyNeedsAttention,
+  );
+
+  return {
+    preflight,
+    authVerified,
+    keyNeedsAttention,
+    connectionNeedsAttention,
+  };
+}
+
+function deriveSetupState(payload = {}, pageResponse = {}) {
+  const health = payload.health || {};
+  const config = payload.config || {};
+  const { preflight, authVerified, keyNeedsAttention, connectionNeedsAttention } = getPreflightState(payload);
+  const hasApiKey = Boolean(String(config.apiKey || '').trim());
   const effectiveBaseUrl = getEffectiveBaseUrl(health, config);
-  const serverReachable = Boolean(health.ok || health.authRequired || health.reachable);
+  const serverReady = Boolean(health.ok || health.authRequired);
+  const serverReachable = Boolean(serverReady || health.reachable);
   const pageReady = Boolean(pageResponse?.ok);
-  const keyNeedsAttention = Boolean(health.authRequired && hasApiKey);
-  const ready = Boolean(health.ok && hasApiKey);
-  const suggestedKey = $('api-key')?.value.trim() || config.apiKey || 'change-me-local-dev';
+  const ready = Boolean(health.ok && hasApiKey && authVerified);
+  const keyPlaceholder = hasApiKey ? '[saved-local-key]' : '[your-local-key]';
 
   if (!serverReachable) {
     return {
       hasApiKey,
+      serverReady,
       serverReachable,
       pageReady,
       keyNeedsAttention,
@@ -79,7 +105,7 @@ function deriveSetupState(payload = {}, pageResponse = {}) {
       commandText: [
         'Add to ~/.hermes/.env:',
         'API_SERVER_ENABLED=true',
-        `API_SERVER_KEY=${suggestedKey}`,
+        `API_SERVER_KEY=${keyPlaceholder}`,
         '',
         'Then run:',
         'hermes gateway',
@@ -87,9 +113,30 @@ function deriveSetupState(payload = {}, pageResponse = {}) {
     };
   }
 
+  if (!serverReady) {
+    return {
+      hasApiKey,
+      serverReady,
+      serverReachable,
+      pageReady,
+      keyNeedsAttention,
+      ready,
+      effectiveBaseUrl,
+      summary: health.message || `Hermes responded at ${effectiveBaseUrl}, but it is not ready yet.`,
+      commandText: [
+        `Hermes responded at ${effectiveBaseUrl}.`,
+        '',
+        health.message || 'Hermes needs attention before the relay can use it.',
+        '',
+        'Check the Hermes logs, then refresh or click Save & Test again.',
+      ].join('\n'),
+    };
+  }
+
   if (!hasApiKey) {
     return {
       hasApiKey,
+      serverReady,
       serverReachable,
       pageReady,
       keyNeedsAttention,
@@ -109,20 +156,41 @@ function deriveSetupState(payload = {}, pageResponse = {}) {
   if (keyNeedsAttention) {
     return {
       hasApiKey,
+      serverReady,
       serverReachable,
       pageReady,
       keyNeedsAttention,
       ready,
       effectiveBaseUrl,
-      summary: 'Hermes responded, but the saved API key needs attention.',
+      summary: preflight.message || 'Hermes responded, but the saved API key needs attention.',
       commandText: [
         `Hermes detected at ${effectiveBaseUrl}.`,
         '',
         'Check ~/.hermes/.env:',
         'API_SERVER_ENABLED=true',
-        `API_SERVER_KEY=${suggestedKey}`,
+        `API_SERVER_KEY=${keyPlaceholder}`,
         '',
         'Then click Save & Test again.',
+      ].join('\n'),
+    };
+  }
+
+  if (connectionNeedsAttention) {
+    return {
+      hasApiKey,
+      serverReady,
+      serverReachable,
+      pageReady,
+      keyNeedsAttention,
+      ready,
+      effectiveBaseUrl,
+      summary: preflight.message || 'Hermes is up, but authenticated requests still need attention.',
+      commandText: [
+        `Hermes detected at ${effectiveBaseUrl}.`,
+        '',
+        preflight.message || 'Authenticated requests are failing even though Hermes is reachable.',
+        '',
+        'Refresh after Hermes is ready, or save your settings again if the server changed.',
       ].join('\n'),
     };
   }
@@ -130,6 +198,7 @@ function deriveSetupState(payload = {}, pageResponse = {}) {
   if (!pageReady) {
     return {
       hasApiKey,
+      serverReady,
       serverReachable,
       pageReady,
       keyNeedsAttention,
@@ -148,6 +217,7 @@ function deriveSetupState(payload = {}, pageResponse = {}) {
 
   return {
     hasApiKey,
+    serverReady,
     serverReachable,
     pageReady,
     keyNeedsAttention,
@@ -168,8 +238,10 @@ function deriveSetupState(payload = {}, pageResponse = {}) {
 function renderStatus(payload) {
   const health = payload.health || {};
   const config = payload.config || {};
+  const { preflight, authVerified, keyNeedsAttention, connectionNeedsAttention } = getPreflightState(payload);
   const hasApiKey = Boolean(String(config.apiKey || '').trim());
-  const serverReachable = Boolean(health.ok || health.authRequired || health.reachable);
+  const serverReady = Boolean(health.ok || health.authRequired);
+  const serverReachable = Boolean(serverReady || health.reachable);
   const effectiveBaseUrl = getEffectiveBaseUrl(health, config);
 
   $('base-url').value = effectiveBaseUrl;
@@ -178,17 +250,17 @@ function renderStatus(payload) {
 
   const dot = $('status-dot');
   dot.classList.remove('ok', 'offline');
-  dot.classList.add(serverReachable ? 'ok' : 'offline');
+  dot.classList.add(serverReady ? 'ok' : 'offline');
 
-  if (health.ok && hasApiKey) {
+  if (health.ok && hasApiKey && authVerified) {
     $('status-label').textContent = 'Connected to Hermes';
-    $('status-meta').textContent = `Ready at ${effectiveBaseUrl}`;
+    $('status-meta').textContent = `Ready at ${effectiveBaseUrl}. ${preflight.message || 'Authenticated API access verified.'}`;
     return;
   }
 
-  if (health.authRequired && hasApiKey) {
+  if (keyNeedsAttention) {
     $('status-label').textContent = 'Hermes needs the right API key';
-    $('status-meta').textContent = `Hermes responded at ${effectiveBaseUrl}. Save the correct key and test again.`;
+    $('status-meta').textContent = preflight.message || `Hermes responded at ${effectiveBaseUrl}. Save the correct key and test again.`;
     return;
   }
 
@@ -198,8 +270,14 @@ function renderStatus(payload) {
     return;
   }
 
-  if (serverReachable) {
-    $('status-label').textContent = 'Hermes is responding';
+  if (connectionNeedsAttention) {
+    $('status-label').textContent = 'Hermes needs authenticated access';
+    $('status-meta').textContent = preflight.message || `Hermes responded at ${effectiveBaseUrl}, but authenticated requests are still failing.`;
+    return;
+  }
+
+  if (health.reachable) {
+    $('status-label').textContent = 'Hermes needs attention';
     $('status-meta').textContent = health.message || `Hermes responded at ${effectiveBaseUrl}.`;
     return;
   }
@@ -232,8 +310,10 @@ function renderSetupGuide(payload, pageResponse) {
   $('setup-summary').textContent = setup.summary;
   $('setup-command').textContent = setup.commandText;
 
-  if (setup.serverReachable) {
+  if (setup.serverReady) {
     setSetupStep('setup-step-server', 'done', `Hermes detected at ${setup.effectiveBaseUrl}.`);
+  } else if (setup.serverReachable) {
+    setSetupStep('setup-step-server', 'warning', payload?.health?.message || 'Hermes responded, but it is not ready yet.');
   } else {
     setSetupStep('setup-step-server', 'current', 'Enable the Hermes API server and run hermes gateway.');
   }
@@ -261,6 +341,25 @@ function renderSetupGuide(payload, pageResponse) {
   }
 
   return setup;
+}
+
+function renderConfigSource(payload) {
+  const health = payload.health || {};
+  const config = payload.config || {};
+  const localDevConfig = payload.localDevConfig || null;
+  const effectiveBaseUrl = getEffectiveBaseUrl(health, config);
+
+  if (localDevConfig?.source) {
+    $('config-source-label').textContent = 'Auto-connected from ~/.hermes/.env';
+    $('config-source-detail').textContent = [
+      localDevConfig.generatedAt ? `Synced ${relativeTime(localDevConfig.generatedAt)}` : 'Synced by the local setup helper',
+      `Base URL ${effectiveBaseUrl}`,
+    ].join(' · ');
+    return;
+  }
+
+  $('config-source-label').textContent = 'Using saved popup settings';
+  $('config-source-detail').textContent = `Saved in this browser · Base URL ${effectiveBaseUrl}`;
 }
 
 function renderPage(response, readyToUse = false) {
@@ -316,6 +415,7 @@ async function refreshAll() {
     useActivePage: !page?.page?.url && !page?.tab?.url,
   });
   renderStatus(status);
+  renderConfigSource(status);
   const setup = renderSetupGuide(status, page);
   renderPage(page, setup.ready);
   renderHandoff(handoff);
@@ -375,27 +475,26 @@ $('refresh-status').addEventListener('click', refreshAll);
 $('open-workspace').addEventListener('click', openWorkspace);
 $('open-workspace-cta').addEventListener('click', openWorkspace);
 $('copy-setup').addEventListener('click', async () => {
-  const apiKey = $('api-key').value.trim() || 'change-me-local-dev';
   const baseUrl = $('base-url').value.trim() || 'http://127.0.0.1:8642';
   const text = [
     'Hermes Relay local setup',
     '',
     '1. Add to ~/.hermes/.env:',
     'API_SERVER_ENABLED=true',
-    `API_SERVER_KEY=${apiKey}`,
+    'API_SERVER_KEY=[your-local-key]',
     '',
     '2. Start Hermes:',
     'hermes gateway',
     '',
     '3. In the Hermes Relay popup:',
     `Base URL: ${baseUrl}`,
-    `API key: ${apiKey}`,
+    'API key: paste the same value from ~/.hermes/.env',
     '',
     latestSetupText,
   ].filter(Boolean).join('\n');
 
   await navigator.clipboard.writeText(text);
-  setOutput('Copied Hermes setup steps to the clipboard.');
+  setOutput('Copied safe Hermes setup steps to the clipboard.');
 });
 
 $('ask-prompt').addEventListener('input', async () => {
