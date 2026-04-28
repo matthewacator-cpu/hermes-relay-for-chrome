@@ -1,6 +1,5 @@
-'use strict';
+import { $, escapeHtml, relativeTime, setBusy as setButtonBusy } from './popup-view.js';
 
-const $ = (id) => document.getElementById(id);
 let latestSetupText = '';
 let currentPage = null;
 let currentLiveSession = null;
@@ -60,35 +59,8 @@ function setPageActionAvailability(enabled, { hasSelection = false } = {}) {
   $('ask-prompt').disabled = !enabled;
 }
 
-function relativeTime(iso) {
-  if (!iso) return 'just now';
-  const delta = Date.now() - new Date(iso).getTime();
-  const mins = Math.round(delta / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.round(hours / 24)}d ago`;
-}
-
 function setBusy(buttonId, label, busy) {
-  const button = $(buttonId);
-  if (!button) return;
-  if (busy) {
-    button.dataset.label = button.textContent;
-    button.textContent = label;
-    button.disabled = true;
-  } else {
-    button.textContent = button.dataset.label || button.textContent;
-    button.disabled = false;
-  }
-}
-
-function escapeHtml(text) {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  setButtonBusy($(buttonId), label, busy);
 }
 
 async function sendMessage(message) {
@@ -472,8 +444,8 @@ function renderPage(response, readyToUse = false) {
   $('page-continuity').classList.toggle('new', !continuity?.seenBefore);
   $('page-scope-label').textContent = deriveScope(page);
   $('page-scope-detail').textContent = page?.selection
-    ? 'Selection detected. Explain Selection and the other quick actions will prioritize the selected text first.'
-    : 'No selection detected. Quick actions will use the readable page body and page metadata.';
+    ? 'Selection detected. Quick actions prioritize redacted selected text first.'
+    : 'No selection detected. Quick actions use redacted readable page context and metadata.';
 }
 
 function renderHandoff(response) {

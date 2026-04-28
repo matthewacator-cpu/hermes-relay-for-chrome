@@ -127,3 +127,35 @@ test('createStorageApi stores live events in sequence order without duplicates',
   assert.deepEqual(events.map((event) => event.id), ['evt-1', 'evt-2']);
   assert.equal(events[1].payload.text, 'done again');
 });
+
+test('createStorageApi updates recent actions by live command id', async () => {
+  const storage = createMemoryStorage();
+  const api = createStorageApi({
+    storage,
+    now: () => '2026-04-21T00:00:00.000Z',
+    uuid: () => 'recent-1',
+  });
+
+  await api.pushRecent({
+    type: 'build-context',
+    title: 'Example',
+    commandId: 'cmd_queued',
+    status: 'queued',
+    statusLabel: 'Queued',
+    output: 'Build Context queued in the live Hermes session.',
+    summary: 'queued',
+  });
+
+  const updated = await api.updateRecentActionByCommandId('cmd_queued', {
+    status: 'done',
+    statusLabel: 'Done',
+    output: 'Final handoff bundle',
+    summary: 'Final handoff bundle',
+  });
+  const recents = await api.getRecentActions();
+
+  assert.equal(updated.output, 'Final handoff bundle');
+  assert.equal(updated.updatedAt, '2026-04-21T00:00:00.000Z');
+  assert.equal(recents[0].status, 'done');
+  assert.equal(recents[0].commandId, 'cmd_queued');
+});

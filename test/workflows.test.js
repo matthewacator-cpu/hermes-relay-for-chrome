@@ -148,6 +148,81 @@ test('runWorkflow routes through an attached live session when available', async
   assert.equal(browserEvents[0].payload.page.selection, 'Critical selected line.');
 });
 
+test('runWorkflow preserves queued live command status and command id', async () => {
+  const pushed = [];
+  const operations = createRelayOperations({
+    storageApi: {
+      async pushRecent(item) {
+        pushed.push(item);
+      },
+    },
+    getConfig: async () => ({
+      baseUrl: 'http://127.0.0.1:8642',
+      apiKey: 'local-key',
+      conversationPrefix: 'relay',
+    }),
+    pageContextApi: {
+      async getActiveTab() {
+        return {
+          id: 3,
+          title: 'Example',
+          url: 'https://example.com/article',
+        };
+      },
+      async extractPageContext() {
+        return {
+          title: 'Example Article',
+          url: 'https://example.com/article',
+          hostname: 'example.com',
+          pageType: 'article',
+          text: 'Important page text.',
+        };
+      },
+    },
+    hermesClient: {
+      async getCurrentLiveSession() {
+        return {
+          ok: true,
+          session: {
+            session_id: 'sess_live',
+          },
+        };
+      },
+      async postLiveBrowserEvent() {
+        return { ok: true };
+      },
+      async sendLiveCommand() {
+        return {
+          ok: true,
+          queued: true,
+          text: '',
+          sessionId: 'sess_live',
+          commandId: 'cmd_queued',
+          raw: { command: { command_id: 'cmd_queued' } },
+        };
+      },
+    },
+    browser: {
+      tabs: {},
+      sidePanel: {},
+    },
+  });
+
+  const result = await operations.runWorkflow({
+    mode: 'summarize',
+    prompt: 'Summarize this page',
+    target: 'generic',
+  });
+
+  assert.equal(result.queued, true);
+  assert.equal(result.commandId, 'cmd_queued');
+  assert.equal(result.meta.status, 'queued');
+  assert.equal(result.meta.statusLabel, 'Queued');
+  assert.equal(pushed[0].status, 'queued');
+  assert.equal(pushed[0].commandId, 'cmd_queued');
+  assert.match(pushed[0].output, /queued in the live Hermes session/);
+});
+
 test('buildBrowserContextEnvelope prioritizes selected text and captures provenance', () => {
   const envelope = buildBrowserContextEnvelope({
     title: 'Example',

@@ -1,6 +1,4 @@
-'use strict';
-
-const $ = (id) => document.getElementById(id);
+import { $, escapeHtml, relativeTime, setBusy as setButtonBusy } from './sidepanel-view.js';
 
 let currentMode = 'ask';
 let currentPage = null;
@@ -15,6 +13,7 @@ let currentWorkspaceUrl = '';
 let currentLiveSession = null;
 let currentOutputMeta = null;
 let liveTimelineEvents = [];
+let toastTimer = null;
 
 function setWorkspaceDisabled(disabled) {
   [
@@ -43,16 +42,6 @@ function setWorkspaceDisabled(disabled) {
   document.querySelectorAll('.workflow-btn, .memory-btn').forEach((button) => {
     button.disabled = disabled;
   });
-}
-
-function relativeTime(iso) {
-  const delta = Date.now() - new Date(iso).getTime();
-  const mins = Math.round(delta / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.round(hours / 24)}d ago`;
 }
 
 async function sendMessage(message) {
@@ -110,6 +99,43 @@ function setOutput(text, meta = undefined) {
     renderOutputMeta(meta);
   }
   persistWorkspaceState();
+}
+
+function notify(message, tone = 'info') {
+  const toast = $('workspace-toast');
+  if (!toast) return;
+  window.clearTimeout(toastTimer);
+  toast.textContent = message || '';
+  toast.classList.remove('info', 'success', 'error');
+  toast.classList.add(tone);
+  toast.hidden = !message;
+  if (message) {
+    toastTimer = window.setTimeout(() => {
+      toast.hidden = true;
+    }, 3600);
+  }
+}
+
+async function runWithBusy(buttonId, busyLabel, task, {
+  successMessage = '',
+  errorMessage = 'Hermes Relay action failed.',
+} = {}) {
+  const button = $(buttonId);
+  setButtonBusy(button, busyLabel, true);
+  try {
+    const result = await task();
+    if (successMessage) {
+      notify(successMessage, 'success');
+    }
+    return result;
+  } catch (error) {
+    const message = error?.message || String(error) || errorMessage;
+    setOutput(message);
+    notify(message || errorMessage, 'error');
+    return null;
+  } finally {
+    setButtonBusy(button, busyLabel, false);
+  }
 }
 
 function renderContinuity(continuity) {
@@ -239,13 +265,6 @@ function renderUnavailablePage(message) {
   $('track-page').textContent = 'Track Page';
   $('direct-thread').innerHTML = '<div class="history-empty">Open a normal web page to use the Hermes direct line.</div>';
   $('snapshot-list').innerHTML = '<div class="history-empty">Snapshots are only available for normal web pages.</div>';
-}
-
-function escapeHtml(text) {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
 }
 
 function renderHistory(items) {
@@ -538,6 +557,17 @@ async function runCurrentWorkflow() {
   if (!currentPage) {
     await refreshPage();
   }
+  if (!currentPage) {
+    throw new Error('Open a normal website tab before running a Hermes workflow.');
+  }
+
+  renderOutputMeta({
+    modeLabel: document.querySelector(`.workflow-btn[data-mode="${currentMode}"]`)?.textContent || 'Hermes Workflow',
+    scopeLabel: currentContinuity?.tracked ? 'Tracked page' : 'Current page',
+    destinationLabel: currentLiveSession ? 'Current terminal session' : 'Workspace',
+    statusLabel: 'Running',
+    provenanceText: 'Using redacted page context from the active tab.',
+  });
 
   const response = await sendMessage({
     type: 'RUN_WORKFLOW',
@@ -548,8 +578,7 @@ async function runCurrentWorkflow() {
   });
 
   if (!response.ok) {
-    setOutput(response.error || 'Hermes workflow failed.');
-    return;
+    throw new Error(response.error || 'Hermes workflow failed.');
   }
 
   setOutput(response.text || '');
@@ -560,12 +589,24 @@ async function runCurrentWorkflow() {
     outputMeta: response.meta || null,
   });
   await refreshHistory();
+  return response;
 }
 
 async function buildContext() {
   if (!currentPage) {
     await refreshPage();
   }
+  if (!currentPage) {
+    throw new Error('Open a normal website tab before building context.');
+  }
+
+  renderOutputMeta({
+    modeLabel: 'Build Context',
+    scopeLabel: currentContinuity?.tracked ? 'Tracked page' : 'Current page',
+    destinationLabel: $('workspace-target').value || 'Auto',
+    statusLabel: 'Running',
+    provenanceText: 'Preparing a compact handoff bundle from redacted page context.',
+  });
 
   const response = await sendMessage({
     type: 'BUILD_CONTEXT',
@@ -574,8 +615,7 @@ async function buildContext() {
   });
 
   if (!response.ok) {
-    setOutput(response.error || 'Could not build context.');
-    return;
+    throw new Error(response.error || 'Could not build context.');
   }
 
   setOutput(response.text || '');
@@ -587,6 +627,7 @@ async function buildContext() {
   });
   await refreshHistory();
   await refreshHandoffStatus();
+  return response;
 }
 
 async function insertLatestContext() {
@@ -595,8 +636,7 @@ async function insertLatestContext() {
   });
 
   if (!response.ok) {
-    setOutput(response.error || 'Could not insert the latest context.');
-    return;
+    throw new Error(response.error || 'Could not insert the latest context.');
   }
 
   setOutput(`${response.text || ''}\n\n[Inserted latest context into active chat]`);
@@ -615,15 +655,31 @@ async function insertLatestContext() {
   });
   await refreshHistory();
   await refreshHandoffStatus();
+  return response;
 }
 
-$('refresh-page').addEventListener('click', refreshPage);
-$('refresh-direct').addEventListener('click', refreshDirectThread);
-$('refresh-live-timeline').addEventListener('click', refreshLiveTimeline);
+$('refresh-page').addEventListener('click', () => {
+  runWithBusy('refresh-page', '...', refreshPage, {
+    successMessage: 'Page context refreshed.',
+  });
+});
+$('refresh-direct').addEventListener('click', () => {
+  runWithBusy('refresh-direct', 'Refreshing...', refreshDirectThread, {
+    successMessage: 'Direct line refreshed.',
+  });
+});
+$('refresh-live-timeline').addEventListener('click', () => {
+  runWithBusy('refresh-live-timeline', 'Refreshing...', refreshLiveTimeline, {
+    successMessage: 'Live timeline refreshed.',
+  });
+});
 
-$('send-direct').addEventListener('click', async () => {
+async function sendDirectMessage() {
   if (!currentPage) {
     await refreshPage();
+  }
+  if (!currentPage) {
+    throw new Error('Open a normal website tab before using the Hermes direct line.');
   }
 
   const response = await sendMessage({
@@ -633,8 +689,7 @@ $('send-direct').addEventListener('click', async () => {
     source: 'workspace',
   });
   if (!response.ok) {
-    setOutput(response.error || 'Could not send your message to Hermes.');
-    return;
+    throw new Error(response.error || 'Could not send your message to Hermes.');
   }
 
   $('direct-prompt').value = '';
@@ -648,78 +703,101 @@ $('send-direct').addEventListener('click', async () => {
   setOutput(response.text || '');
   await refreshHistory();
   await refreshPage();
+  return response;
+}
+
+$('send-direct').addEventListener('click', () => {
+  runWithBusy('send-direct', 'Sending...', sendDirectMessage, {
+    successMessage: 'Hermes replied in the direct line.',
+  });
 });
 
-$('clear-direct').addEventListener('click', async () => {
+$('direct-prompt').addEventListener('keydown', (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+    event.preventDefault();
+    runWithBusy('send-direct', 'Sending...', sendDirectMessage, {
+      successMessage: 'Hermes replied in the direct line.',
+    });
+  }
+});
+
+$('clear-direct').addEventListener('click', () => runWithBusy('clear-direct', 'Clearing...', async () => {
   const response = await sendMessage({
     type: 'CLEAR_DIRECT_THREAD',
     page: currentPage,
   });
   if (!response.ok) {
-    setOutput(response.error || 'Could not clear the Hermes thread.');
-    return;
+    throw new Error(response.error || 'Could not clear the Hermes thread.');
   }
   renderDirectThread(response.thread);
   persistWorkspaceState({ lastAction: 'clear-direct' });
   await refreshPage();
-});
+  return response;
+}, {
+  successMessage: 'Direct line cleared.',
+}));
 
-$('track-page').addEventListener('click', async () => {
+$('track-page').addEventListener('click', () => runWithBusy('track-page', 'Tracking...', async () => {
   const response = await sendMessage({
     type: 'TRACK_PAGE',
     page: currentPage,
     pinned: true,
   });
   if (!response.ok) {
-    setOutput(response.error || 'Could not track this page.');
-    return;
+    throw new Error(response.error || 'Could not track this page.');
   }
   setOutput(`Tracked ${currentPage?.title || 'this page'}.`);
   persistWorkspaceState({ lastAction: 'track-page' });
   await refreshTrackedPages();
   await refreshPage();
-});
+  return response;
+}, {
+  successMessage: 'Page is tracked and pinned.',
+}));
 
-$('watch-page').addEventListener('click', async () => {
+$('watch-page').addEventListener('click', () => runWithBusy('watch-page', 'Watching...', async () => {
   const response = await sendMessage({
     type: 'WATCH_PAGE',
     page: currentPage,
     intervalMinutes: 60,
   });
   if (!response.ok) {
-    setOutput(response.error || 'Could not watch this page.');
-    return;
+    throw new Error(response.error || 'Could not watch this page.');
   }
   setOutput(`Watching ${currentPage?.title || 'this page'} every hour while it is open.`);
   persistWorkspaceState({ lastAction: 'watch-page' });
   await refreshTrackedPages();
   await refreshPage();
-});
+  return response;
+}, {
+  successMessage: 'Page watch is active.',
+}));
 
-$('save-note').addEventListener('click', async () => {
+$('save-note').addEventListener('click', () => runWithBusy('save-note', 'Saving...', async () => {
   const response = await sendMessage({
     type: 'SAVE_PAGE_NOTE',
     url: currentPage?.url || '',
     note: $('page-note').value,
   });
   if (!response.ok) {
-    setOutput(response.error || 'Could not save note.');
-    return;
+    throw new Error(response.error || 'Could not save note.');
   }
   setOutput('Page note saved.');
   persistWorkspaceState({ lastAction: 'save-note' });
   await refreshPage();
-});
+  return response;
+}, {
+  successMessage: 'Page note saved.',
+}));
 
-$('save-snapshot').addEventListener('click', async () => {
+$('save-snapshot').addEventListener('click', () => runWithBusy('save-snapshot', 'Saving...', async () => {
   const response = await sendMessage({
     type: 'SAVE_PAGE_SNAPSHOT',
     page: currentPage,
     source: 'sidepanel',
   });
   if (!response.ok) {
-    setOutput(response.error || 'Could not save snapshot.');
-    return;
+    throw new Error(response.error || 'Could not save snapshot.');
   }
   if (response.unchanged) {
     setOutput('This page matches the latest saved snapshot.');
@@ -729,63 +807,83 @@ $('save-snapshot').addEventListener('click', async () => {
   persistWorkspaceState({ lastAction: 'save-snapshot' });
   await refreshSnapshots();
   await refreshPage();
-});
+  return response;
+}, {
+  successMessage: 'Snapshot state updated.',
+}));
 
-$('compare-snapshot').addEventListener('click', async () => {
+$('compare-snapshot').addEventListener('click', () => runWithBusy('compare-snapshot', 'Comparing...', async () => {
   const response = await sendMessage({
     type: 'COMPARE_WITH_SNAPSHOT',
     page: currentPage,
     note: $('workspace-prompt').value.trim(),
   });
   if (!response.ok) {
-    setOutput(response.error || 'Could not compare with the last snapshot.');
-    return;
+    throw new Error(response.error || 'Could not compare with the last snapshot.');
   }
   setOutput(response.text || '');
   await refreshHistory();
-});
+  return response;
+}, {
+  successMessage: 'Snapshot comparison finished.',
+}));
 
 document.querySelectorAll('.workflow-btn').forEach((button) => {
   button.addEventListener('click', () => setMode(button.dataset.mode));
 });
 
 $('run-workflow').addEventListener('click', () => {
-  runCurrentWorkflow();
+  runWithBusy('run-workflow', 'Running...', runCurrentWorkflow, {
+    successMessage: 'Hermes workflow finished.',
+  });
 });
 
 $('build-context').addEventListener('click', () => {
-  buildContext();
+  runWithBusy('build-context', 'Building...', buildContext, {
+    successMessage: 'Context bundle is ready.',
+  });
 });
 
 $('insert-latest').addEventListener('click', () => {
-  insertLatestContext();
+  runWithBusy('insert-latest', 'Inserting...', insertLatestContext, {
+    successMessage: 'Inserted latest context into the active chat.',
+  });
 });
 
 document.querySelectorAll('.memory-btn').forEach((button) => {
   button.addEventListener('click', async () => {
-    const response = await sendMessage({
-      type: 'RUN_MEMORY_ACTION',
-      kind: button.dataset.kind,
-      note: $('workspace-prompt').value.trim(),
-      page: currentPage,
-    });
-    if (!response.ok) {
-      setOutput(response.error || 'Hermes memory action failed.');
-      return;
+    setButtonBusy(button, 'Remembering...', true);
+    try {
+      const response = await sendMessage({
+        type: 'RUN_MEMORY_ACTION',
+        kind: button.dataset.kind,
+        note: $('workspace-prompt').value.trim(),
+        page: currentPage,
+      });
+      if (!response.ok) {
+        throw new Error(response.error || 'Hermes memory action failed.');
+      }
+      setOutput(response.text || '', response.meta || null);
+      notify('Memory action finished.', 'success');
+      persistWorkspaceState({
+        lastAction: `memory-${button.dataset.kind}`,
+        output: response.text || '',
+        outputMeta: response.meta || null,
+      });
+      await refreshHistory();
+    } catch (error) {
+      const message = error?.message || String(error);
+      setOutput(message);
+      notify(message, 'error');
+    } finally {
+      setButtonBusy(button, 'Remembering...', false);
     }
-    setOutput(response.text || '', response.meta || null);
-    persistWorkspaceState({
-      lastAction: `memory-${button.dataset.kind}`,
-      output: response.text || '',
-      outputMeta: response.meta || null,
-    });
-    await refreshHistory();
   });
 });
 
 $('copy-workspace-output').addEventListener('click', async () => {
   await navigator.clipboard.writeText(currentOutput || '');
-  setOutput(`${currentOutput || ''}\n\n[Copied to clipboard]`);
+  notify('Copied workspace output to the clipboard.', 'success');
 });
 
 $('open-workspace-output').addEventListener('click', async () => {

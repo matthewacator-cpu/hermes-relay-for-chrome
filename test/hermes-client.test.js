@@ -196,6 +196,38 @@ test('sendLiveCommand returns live session response text', async () => {
   assert.match(seen[0].url, /\/v1\/live-sessions\/sess_live\/commands$/);
 });
 
+test('sendLiveCommand returns queued command metadata for accepted live commands', async () => {
+  const client = createHermesClient({
+    fetchImpl: async () => ({
+      ok: false,
+      status: 202,
+      async json() {
+        return {
+          command: {
+            command_id: 'cmd_queued',
+            session_id: 'sess_live',
+          },
+        };
+      },
+    }),
+  });
+
+  const result = await client.sendLiveCommand({
+    baseUrl: 'http://127.0.0.1:8642',
+    apiKey: 'local-key',
+  }, {
+    sessionId: 'sess_live',
+    type: 'workflow.run',
+    prompt: 'Summarize this page',
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.queued, true);
+  assert.equal(result.text, '');
+  assert.equal(result.sessionId, 'sess_live');
+  assert.equal(result.commandId, 'cmd_queued');
+});
+
 test('buildLiveEventsUrl authenticates EventSource streams with a query token', () => {
   const client = createHermesClient();
   const url = client.buildLiveEventsUrl({

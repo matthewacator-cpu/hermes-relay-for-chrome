@@ -4,6 +4,8 @@ import { createStorageApi } from './lib/background/storage.js';
 import { createPageContextApi } from './lib/background/page-context.js';
 import { createHermesClient } from './lib/background/hermes-client.js';
 import { buildLocalDevConfigPatch, loadLocalDevConfig } from './lib/background/local-dev-config.js';
+import { createLiveEventManager } from './lib/background/live.js';
+import { createPageWatcherManager } from './lib/background/watchers.js';
 import { createRelayOperations } from './lib/background/workflows.js';
 
 const storageApi = createStorageApi();
@@ -131,114 +133,19 @@ const operations = createRelayOperations({
   getConfig: async () => (await getRuntimeConfig({ ensureReachable: true })).config,
 });
 
-const LIVE_EVENT_TYPES = [
-  'session.attached',
-  'command.created',
-  'command.claimed',
-  'assistant.delta',
-  'assistant.final',
-  'tool.status',
-  'browser.context',
-  'browser.action.requested',
-  'browser.action.result',
-  'approval.requested',
-  'approval.resolved',
-  'error',
-];
+const liveEvents = createLiveEventManager({
+  storageApi,
+  hermesClient,
+  runtime: chrome.runtime,
+});
 
-const liveStreamState = {
-  sessionId: '',
-  status: 'idle',
-  error: '',
-  eventSource: null,
-};
-
-function stopLiveEventStream() {
-  if (liveStreamState.eventSource) {
-    liveStreamState.eventSource.close();
-  }
-  liveStreamState.sessionId = '';
-  liveStreamState.status = 'idle';
-  liveStreamState.error = '';
-  liveStreamState.eventSource = null;
-}
-
-async function recordLiveEvent(event) {
-  if (!event?.session_id) return;
-  await storageApi.pushLiveEvents([event]);
-  chrome.runtime.sendMessage({ type: 'LIVE_EVENT_UPDATE', event }).catch(() => {});
-}
-
-async function ensureLiveEventStream(config, liveSession) {
-  const sessionId = liveSession?.session?.session_id || '';
-  if (!sessionId || !config?.apiKey || typeof EventSource === 'undefined') {
-    if (!sessionId) {
-      stopLiveEventStream();
-    }
-    return;
-  }
-  if (liveStreamState.eventSource && liveStreamState.sessionId === sessionId) {
-    return;
-  }
-
-  stopLiveEventStream();
-  const existing = await storageApi.getLiveEvents(sessionId);
-  const after = existing.reduce((max, event) => Math.max(max, Number(event.sequence || 0)), 0);
-  const source = new EventSource(hermesClient.buildLiveEventsUrl(config, { sessionId, after }));
-  liveStreamState.sessionId = sessionId;
-  liveStreamState.status = 'connecting';
-  liveStreamState.eventSource = source;
-
-  const handleEvent = (event) => {
-    try {
-      const payload = JSON.parse(event.data || '{}');
-      liveStreamState.status = 'connected';
-      liveStreamState.error = '';
-      recordLiveEvent(payload).catch(() => {});
-    } catch (error) {
-      liveStreamState.status = 'error';
-      liveStreamState.error = error.message || String(error);
-    }
-  };
-
-  LIVE_EVENT_TYPES.forEach((eventType) => {
-    source.addEventListener(eventType, handleEvent);
-  });
-  source.onmessage = handleEvent;
-  source.onerror = () => {
-    liveStreamState.status = 'reconnecting';
-    liveStreamState.error = 'Live event stream reconnecting.';
-  };
-}
-
-function summarizeLiveTimeline(events = []) {
-  const sorted = [...events].sort((left, right) => Number(left.sequence || 0) - Number(right.sequence || 0));
-  const resolvedApprovals = new Set(
-    sorted
-      .filter((event) => event.type === 'approval.resolved')
-      .map((event) => event.payload?.approval_id)
-      .filter(Boolean),
-  );
-  const pendingApproval = [...sorted]
-    .reverse()
-    .find((event) => event.type === 'approval.requested' && !resolvedApprovals.has(event.payload?.approval_id));
-  const lastResult = [...sorted]
-    .reverse()
-    .find((event) => ['assistant.final', 'browser.action.result', 'error'].includes(event.type));
-  const activeCommand = [...sorted]
-    .reverse()
-    .find((event) => ['command.created', 'command.claimed', 'tool.status', 'assistant.delta'].includes(event.type));
-
-  return {
-    status: liveStreamState.status,
-    error: liveStreamState.error,
-    eventCount: sorted.length,
-    pendingApproval: pendingApproval || null,
-    lastResult: lastResult || null,
-    activeCommand: activeCommand || null,
-    lastEvent: sorted[sorted.length - 1] || null,
-  };
-}
+const pageWatchers = createPageWatcherManager({
+  storageApi,
+  pageContextApi,
+  alarms: chrome.alarms,
+  tabs: chrome.tabs,
+  alarmName: WATCH_ALARM_NAME,
+});
 
 function contextMenuCreate(menu) {
   return new Promise((resolve, reject) => {
@@ -291,7 +198,7 @@ async function initializeRelay() {
   await storageApi.ensureStorageSchema();
   await syncLocalDevConfig();
   await ensureContextMenus();
-  await ensureWatcherAlarm();
+  await pageWatchers.ensureAlarm();
 }
 
 let ready = Promise.resolve();
@@ -341,72 +248,6 @@ async function setWorkspaceState(patch = {}, scope = {}) {
   return storageApi.setWorkspaceStateByKey(key, patch);
 }
 
-async function ensureWatcherAlarm() {
-  if (!chrome.alarms?.create) return;
-  const tracked = await storageApi.getTrackedPages();
-  const hasWatchers = tracked.some((item) => item.watchEnabled);
-  if (!hasWatchers) {
-    await chrome.alarms.clear(WATCH_ALARM_NAME);
-    return;
-  }
-  chrome.alarms.create(WATCH_ALARM_NAME, {
-    periodInMinutes: 15,
-  });
-}
-
-async function runPageWatchers() {
-  const tracked = await storageApi.getTrackedPages();
-  const watchers = tracked.filter((item) => item.watchEnabled);
-  if (!watchers.length) {
-    await ensureWatcherAlarm();
-    return;
-  }
-
-  const tabs = await chrome.tabs.query({});
-  const nowIso = new Date().toISOString();
-  for (const watcher of watchers) {
-    const intervalMs = Math.max(15, Number(watcher.watchIntervalMinutes || 60)) * 60000;
-    if (watcher.lastWatchAt && Date.now() - new Date(watcher.lastWatchAt).getTime() < intervalMs) {
-      continue;
-    }
-    const tab = tabs.find((item) => canonicalizeUrl(item.url || '') === canonicalizeUrl(watcher.url || ''));
-    if (!tab?.id) {
-      await storageApi.updateTrackedPage(watcher.url, {
-        lastWatchAt: nowIso,
-        lastWatchStatus: 'skipped-not-open',
-      }).catch(() => null);
-      continue;
-    }
-    try {
-      const page = await pageContextApi.extractPageContext(tab.id);
-      const saved = await storageApi.saveSnapshot(page, 'watcher');
-      await storageApi.updateTrackedPage(watcher.url, {
-        lastWatchAt: nowIso,
-        lastWatchStatus: saved.unchanged ? 'unchanged' : 'changed',
-      });
-      if (!saved.unchanged) {
-        await storageApi.pushRecent({
-          type: 'page-watch-change',
-          title: page.title || watcher.title || 'Watched page',
-          url: page.url || watcher.url,
-          summary: 'Watched page changed while open. A new snapshot was saved.',
-          output: `Watched page changed: ${page.title || watcher.title || watcher.url}`,
-          modeLabel: 'Page Watcher',
-          scopeLabel: 'Readable page',
-          destinationLabel: 'Workspace history',
-          statusLabel: 'Changed',
-          provenanceText: 'Used explicit page watcher + readable page snapshot',
-        });
-      }
-    } catch (error) {
-      await storageApi.updateTrackedPage(watcher.url, {
-        lastWatchAt: nowIso,
-        lastWatchStatus: error.message || 'watch failed',
-      }).catch(() => null);
-    }
-  }
-}
-
 async function requirePage(page = null) {
   const current = await operations.getCurrentPageContext(page, null);
   if (!current.page) {
@@ -423,15 +264,15 @@ async function messageGetStatus() {
     getAuthenticatedPreflight(config, health),
     hermesClient.getCurrentLiveSession(config),
   ]);
-  await ensureLiveEventStream(config, liveSession);
-  const liveEvents = liveSession?.session?.session_id
+  await liveEvents.ensureStream(config, liveSession);
+  const liveTimelineEvents = liveSession?.session?.session_id
     ? await storageApi.getLiveEvents(liveSession.session.session_id)
     : [];
   return {
     health,
     preflight,
     liveSession,
-    liveTimeline: summarizeLiveTimeline(liveEvents),
+    liveTimeline: liveEvents.summarize(liveTimelineEvents),
     config,
     localDevConfig: localDevConfig ? {
       source: localDevConfig.source,
@@ -548,16 +389,17 @@ const messageHandlers = {
 
   async GET_LIVE_TIMELINE(message) {
     const { config } = await getRuntimeConfig({ ensureReachable: true });
-    const sessionId = message.sessionId || liveStreamState.sessionId || '';
+    const streamState = liveEvents.getState();
+    const sessionId = message.sessionId || streamState.sessionId || '';
     const events = await storageApi.getLiveEvents(sessionId);
     return {
       ok: true,
       stream: {
         sessionId,
-        status: liveStreamState.status,
-        error: liveStreamState.error,
+        status: streamState.status,
+        error: streamState.error,
       },
-      summary: summarizeLiveTimeline(events),
+      summary: liveEvents.summarize(events),
       events,
       config: {
         baseUrl: config.baseUrl,
@@ -596,7 +438,7 @@ const messageHandlers = {
 
   async RESOLVE_LIVE_APPROVAL(message) {
     const { config } = await getRuntimeConfig({ ensureReachable: true });
-    const sessionId = message.sessionId || liveStreamState.sessionId || '';
+    const sessionId = message.sessionId || liveEvents.getState().sessionId || '';
     const approvalId = message.approvalId || message.approval_id || '';
     const decision = message.decision === 'approved' ? 'approved' : 'denied';
     const action = message.action && typeof message.action === 'object' ? message.action : {};
@@ -713,7 +555,7 @@ const messageHandlers = {
       watchIntervalMinutes: Math.max(15, Number(message.intervalMinutes || 60)),
       lastWatchStatus: 'watching',
     });
-    await ensureWatcherAlarm();
+    await pageWatchers.ensureAlarm();
     return {
       ok: true,
       tracked: updated,
@@ -726,7 +568,7 @@ const messageHandlers = {
       watchEnabled: false,
       lastWatchStatus: 'paused',
     });
-    await ensureWatcherAlarm();
+    await pageWatchers.ensureAlarm();
     return {
       ok: true,
       tracked: updated,
@@ -957,7 +799,7 @@ chrome.commands.onCommand.addListener(async (command) => {
 if (chrome.alarms?.onAlarm) {
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name !== WATCH_ALARM_NAME) return;
-    runPageWatchers().catch((error) => {
+    pageWatchers.run().catch((error) => {
       console.error('Hermes Relay watcher failed.', error);
     });
   });

@@ -161,6 +161,8 @@ function normalizeRecentActions(items = [], timestamp = '', uuid = () => crypto.
       timestamp: item.timestamp || timestamp,
       summary: item.summary || '',
       output: item.output || '',
+      commandId: item.commandId || item.command_id || '',
+      sessionId: item.sessionId || item.session_id || '',
       provenance: Array.isArray(item.provenance) ? item.provenance : [],
       provenanceText: item.provenanceText || '',
       scope: item.scope || '',
@@ -378,6 +380,36 @@ export function createStorageApi({
   async function getRecentAction(id) {
     const items = await getRecentActions();
     return items.find((item) => item.id === id) || null;
+  }
+
+  async function updateRecentActionByCommandId(commandId = '', patch = {}) {
+    const normalizedCommandId = String(commandId || '').trim();
+    if (!normalizedCommandId) {
+      return null;
+    }
+
+    const data = await storage.get({ recentActions: [] });
+    let updated = null;
+    const next = (data.recentActions || []).map((item) => {
+      if (String(item.commandId || item.command_id || '') !== normalizedCommandId) {
+        return item;
+      }
+
+      updated = {
+        ...item,
+        ...patch,
+        commandId: normalizedCommandId,
+        updatedAt: now(),
+      };
+      return updated;
+    });
+
+    if (!updated) {
+      return null;
+    }
+
+    await storage.set({ recentActions: next });
+    return updated;
   }
 
   async function getLiveEvents(sessionId = '') {
@@ -605,6 +637,7 @@ export function createStorageApi({
     pushRecent,
     getRecentActions,
     getRecentAction,
+    updateRecentActionByCommandId,
     getLiveEvents,
     pushLiveEvents,
     clearLiveEvents,

@@ -40,6 +40,16 @@ export function extractOutputText(payload) {
   return payload?.output_text || payload?.content || '';
 }
 
+function extractCommandId(payload = {}) {
+  return payload?.command_id
+    || payload?.commandId
+    || payload?.command?.command_id
+    || payload?.command?.id
+    || payload?.result?.command_id
+    || payload?.result?.commandId
+    || '';
+}
+
 export function createHermesClient({
   fetchImpl = globalThis.fetch,
 } = {}) {
@@ -369,10 +379,12 @@ export function createHermesClient({
     const payload = await response.json().catch(() => ({}));
     if (response.status === 202) {
       return {
-        ok: false,
+        ok: true,
         queued: true,
         status: 202,
         text: '',
+        sessionId: payload?.session_id || payload?.command?.session_id || sessionId || '',
+        commandId: extractCommandId(payload),
         raw: payload,
       };
     }
@@ -385,6 +397,7 @@ export function createHermesClient({
       queued: false,
       text: payload?.result?.text || payload?.command?.result?.text || '',
       sessionId: payload?.result?.session_id || sessionId || '',
+      commandId: extractCommandId(payload),
       raw: payload,
     };
   }

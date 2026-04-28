@@ -16,6 +16,8 @@
         <button id="refresh-page" class="icon-btn" title="Refresh page context">↻</button>
       </header>
 
+      <div id="workspace-toast" class="workspace-toast" role="status" aria-live="polite" hidden></div>
+
       <section class="panel live-session-panel">
         <div id="live-session-title" class="section-title">Standalone relay mode</div>
         <div id="live-session-meta" class="page-meta">Run /live on in the Hermes terminal session you want to share.</div>
@@ -59,7 +61,7 @@
         </div>
         <textarea id="direct-prompt" rows="4" placeholder="Ask Hermes what this page means, what changed, what to do next, or what to remember."></textarea>
         <div class="toolbar">
-          <div class="direct-hint">Current page and any selected text are sent with your message.</div>
+          <div class="direct-hint">Current page and selected text are redacted before sending.</div>
           <div class="toolbar-actions">
             <button id="send-direct" class="primary-btn">Send To Hermes</button>
           </div>
@@ -169,6 +171,6 @@
         </div>
       </section>
     </main>
-    <script src="sidepanel.js"></script>
+    <script type="module" src="sidepanel.js"></script>
   </body>
   </html>

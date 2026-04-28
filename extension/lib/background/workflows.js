@@ -283,8 +283,11 @@ function buildRunMeta({
   page = null,
   source = 'standalone',
   sessionId = '',
+  commandId = '',
   scope = '',
   provenance = [],
+  status = 'done',
+  statusLabel = '',
   timestamp = '',
 } = {}) {
   const modeDef = getModeDefinition(mode);
@@ -296,8 +299,9 @@ function buildRunMeta({
     scopeLabel: getContextScopeLabel(scope),
     source,
     sessionId,
-    status: 'done',
-    statusLabel: 'Done',
+    commandId,
+    status,
+    statusLabel: statusLabel || (status === 'queued' ? 'Queued' : status === 'failed' ? 'Failed' : 'Done'),
     destination: source === 'live-session' ? 'shared-session' : 'popup-workspace',
     destinationLabel: source === 'live-session' ? 'Current terminal session' : 'Popup and workspace',
     provenance,
@@ -317,6 +321,14 @@ export function getTargetGuidance(target) {
   };
 
   return table[target] || table.generic;
+}
+
+function liveDisplayText(modeLabel, liveResult = {}) {
+  if (!liveResult?.queued) {
+    return liveResult?.text || '';
+  }
+
+  return `${modeLabel} queued in the live Hermes session. Watch the Live Timeline for the final response.`;
 }
 
 export function composeDirectPrompt(page, userPrompt) {
@@ -666,6 +678,9 @@ export function createRelayOperations({
           provenance: contextEnvelope.provenance,
         },
       });
+      const modeLabel = getModeDefinition(mode).label;
+      const displayText = liveDisplayText(modeLabel, liveResult);
+      const status = liveResult.queued ? 'queued' : 'done';
 
       const resultMeta = buildRunMeta({
         mode,
@@ -673,8 +688,10 @@ export function createRelayOperations({
         page: current.page,
         source: 'live-session',
         sessionId: liveResult.sessionId || liveSession.session.session_id,
+        commandId: liveResult.commandId || '',
         scope: contextEnvelope.scope,
         provenance: contextEnvelope.provenance,
+        status,
         timestamp: now(),
       });
 
@@ -683,13 +700,14 @@ export function createRelayOperations({
         title: current.page.title || title || 'Current page',
         url: current.page.url || url || '',
         prompt,
-        summary: liveResult.text.slice(0, 280),
-        output: liveResult.text,
+        summary: displayText.slice(0, 280),
+        output: displayText,
         mode,
-        modeLabel: getModeDefinition(mode).label,
+        modeLabel,
         target: effectiveTarget,
         source: 'live-session',
         sessionId: liveResult.sessionId || liveSession.session.session_id,
+        commandId: liveResult.commandId || '',
         scope: contextEnvelope.scope,
         scopeLabel: contextEnvelope.scopeLabel,
         destination: resultMeta.destination,
@@ -702,10 +720,12 @@ export function createRelayOperations({
 
       return {
         page: current.page,
-        text: liveResult.text,
+        text: displayText,
         raw: liveResult.raw,
         mode,
         target: effectiveTarget,
+        queued: Boolean(liveResult.queued),
+        commandId: liveResult.commandId || '',
         sessionId: liveResult.sessionId || liveSession.session.session_id,
         source: 'live-session',
         meta: resultMeta,
@@ -829,6 +849,9 @@ export function createRelayOperations({
           provenance: contextEnvelope.provenance,
         },
       });
+      const modeLabel = getModeDefinition('inject').label;
+      const displayText = liveDisplayText(modeLabel, liveResult);
+      const status = liveResult.queued ? 'queued' : 'done';
 
       const resultMeta = buildRunMeta({
         mode: 'inject',
@@ -836,8 +859,10 @@ export function createRelayOperations({
         page: current.page,
         source: 'live-session',
         sessionId: liveResult.sessionId || liveSession.session.session_id,
+        commandId: liveResult.commandId || '',
         scope: contextEnvelope.scope,
         provenance: contextEnvelope.provenance,
+        status,
         timestamp: now(),
       });
 
@@ -845,13 +870,14 @@ export function createRelayOperations({
         type: 'build-context',
         title: current.page.title || current.tab?.title || 'Current page',
         url: current.page.url || current.tab?.url || '',
-        summary: liveResult.text.slice(0, 280),
-        output: liveResult.text,
+        summary: displayText.slice(0, 280),
+        output: displayText,
         target,
         mode: 'inject',
         source: 'live-session',
         sessionId: liveResult.sessionId || liveSession.session.session_id,
-        modeLabel: getModeDefinition('inject').label,
+        commandId: liveResult.commandId || '',
+        modeLabel,
         scope: contextEnvelope.scope,
         scopeLabel: contextEnvelope.scopeLabel,
         destination: resultMeta.destination,
@@ -865,8 +891,10 @@ export function createRelayOperations({
       return {
         page: current.page,
         target,
-        text: liveResult.text,
+        text: displayText,
         raw: liveResult.raw,
+        queued: Boolean(liveResult.queued),
+        commandId: liveResult.commandId || '',
         sessionId: liveResult.sessionId || liveSession.session.session_id,
         source: 'live-session',
         meta: resultMeta,

@@ -1,3 +1,5 @@
+import { redactPageContext } from '../shared/redaction.js';
+
 export function createPageContextApi({
   tabs = globalThis.chrome?.tabs,
   scripting = globalThis.chrome?.scripting,
@@ -80,6 +82,7 @@ export function createPageContextApi({
             )),
           }));
         const active = document.activeElement;
+        const activeIsEditable = Boolean(active?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(active?.tagName));
         const focusedElement = active && active !== document.body
           ? {
               tag: active.tagName.toLowerCase(),
@@ -87,8 +90,9 @@ export function createPageContextApi({
               name: active.getAttribute('name') || '',
               id: active.id || '',
               placeholder: active.getAttribute('placeholder') || '',
-              text: (active.textContent || active.value || '').replace(/\s+/g, ' ').trim().slice(0, 160),
-              editable: Boolean(active.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName)),
+              text: activeIsEditable ? '' : (active.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 160),
+              editable: activeIsEditable,
+              redacted: activeIsEditable,
             }
           : null;
         const root =
@@ -131,7 +135,7 @@ export function createPageContextApi({
       },
     });
 
-    return result;
+    return redactPageContext(result);
   }
 
   async function ensureChatBridge(tabId) {
